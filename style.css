@@ -202,9 +202,9 @@ tr.sel { background: rgb(243 173 120 / 11%); color: var(--fg); }
 .box li { margin: 5px 0; padding-left: 3px; }
 .k { color: var(--ac); font-weight: 600; }
 .reflection-title { margin-top: 28px; }
-#tpl .section-heading { align-items: center; }
-.pdf-controls { justify-content: flex-end; margin: 0; }
-.pdf-controls label { min-width: 86px; flex: 0 1 90px; }
+#tpl .section-heading { align-items: flex-start; flex-direction: column; }
+.pdf-controls { width: 100%; align-items: flex-end; justify-content: flex-start; margin: 0; }
+.pdf-controls label { min-width: 90px; flex: 0 0 90px; }
 #tinfo { margin: 16px 0; }
 #tprev svg { display: block; width: min(100%, 520px); max-width: 520px; height: auto; border: 1px solid var(--ln); border-radius: 4px; background: #fff; }
 .site-footer { display: flex; justify-content: space-between; gap: 20px; padding: 28px 0 38px; border-top: 1px solid var(--ln); font-size: .62rem; }
