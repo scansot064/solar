@@ -259,6 +259,8 @@ function mk(){
  P.push(...LB);
  P.push({k:'c',x:ox,y:oy,r:2.5,c:BK,w:.5});P.push({k:'l',x1:ox-4,y1:oy,x2:ox+4,y2:oy,c:BK,w:.3});P.push({k:'l',x1:ox,y1:oy-4,x2:ox,y2:oy+4,c:BK,w:.3});
  T(ox+8*Math.sin(gc),oy-8*Math.cos(gc)+1.2,tr('pdf.observer'),7,BK,'middle');
+ T(m,H-7,tr('pdf.attribution'),6.5,G1);
+ T(m,H-3,tr('pdf.license'),6.5,G1);
  return{P,W,H,land,Rc,k,R0,pk}}
 function svgOf(L){const g=c=>`rgb(${c.join(',')})`;let s=`<svg viewBox="0 0 ${L.W} ${L.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${L.W}" height="${L.H}" fill="#fff"/>`;
  L.P.forEach(p=>{if(p.k=='t')s+=`<text x="${p.x}" y="${p.y}" font-size="${p.pt*.3528}" fill="${g(p.c)}" text-anchor="${p.an}" font-family="Helvetica,Arial,sans-serif"${p.b?' font-weight="700"':''}>${escapeHtml(p.s)}</text>`;
