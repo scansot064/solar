@@ -112,13 +112,13 @@ select { cursor: pointer; }
 .control-panel { margin-bottom: 40px; padding: clamp(18px, 3vw, 30px); }
 .compact-heading { align-items: center; }
 .step-index { white-space: nowrap; }
-.ctl { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin: 22px 0 0; }
+.ctl { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px; margin: 22px 0 0; }
 .ctl label { display: flex; min-width: 130px; flex: 1 1 135px; flex-direction: column; gap: 6px; }
 .ctl .latitude-field { display: flex; min-width: 130px; flex: 1 1 135px; flex-direction: column; gap: 6px; }
-.latitude-field label { display: block; }
-.cities-note { min-height: 2.4em; margin: 0; color: var(--mu); font-size: .73rem; line-height: 1.35; }
+.latitude-field label { display: block; flex: none; }
+.cities-note { margin: 0; color: var(--mu); font-size: .73rem; line-height: 1.35; }
 .ctl label[for="date"] { flex-grow: 1.3; }
-.button-field { display: flex; min-height: 72px; flex: 0 1 auto; align-items: flex-end; }
+.button-field { display: flex; min-height: 72px; flex: 0 1 auto; align-self: flex-end; align-items: flex-end; }
 button {
   min-height: 46px;
   padding: 10px 16px;
