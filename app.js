@@ -249,6 +249,12 @@ function genPDF(open){const L=mk();if(!L)return;const J=window.jspdf&&window.jsp
 $('paper').addEventListener('input',tplUpdate);
 $('bpdf').addEventListener('click',()=>genPDF(0));$('bpdfo').addEventListener('click',()=>genPDF(1));
 $('tab').addEventListener('click',e=>{const r=e.target.closest('tr[data-i]');if(r){sel=+r.dataset.i;draw()}});
+$('rnd').addEventListener('click',()=>{
+ const year=new Date().getFullYear(),start=Date.UTC(year,0,1),days=(Date.UTC(year+1,0,1)-start)/864e5;
+ $('lat').value=Math.floor(Math.random()*181)-90;
+ $('date').value=new Date(start+Math.floor(Math.random()*days)*864e5).toISOString().slice(0,10);
+ run(0);
+});
 ['lat','date','R','mode','hmax'].forEach(i=>$(i).addEventListener('input',()=>run(0)));
 run(0);
 fetch('ciudades.json').then(r=>r.json()).then(d=>{CIUDADES=d;earth()}).catch(()=>{CIUDADES=[];earth()});
