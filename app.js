@@ -38,6 +38,12 @@ async function loadLocale(lang){
  try{localStorage.setItem('solar-language',lang)}catch(error){console.warn('Could not save language preference.',error)}
  run(1);
 }
+function setTheme(theme){
+ if(!['light','dark'].includes(theme))throw new Error(`Unsupported theme: ${theme}`);
+ document.documentElement.dataset.theme=theme;
+ $('theme').value=theme;
+ try{localStorage.setItem('solar-theme',theme)}catch(error){console.warn('Could not save theme preference.',error)}
+}
 function ciudades(lat){
  const n=x=>Math.abs(Math.round(x))+'º '+(x>=0?'N':'S');
  if(CIUDADES===null)return '';
@@ -289,6 +295,7 @@ $('language').addEventListener('change',async e=>{
   $('status').hidden=false;
  }
 });
+$('theme').addEventListener('change',e=>setTheme(e.target.value));
 $('rnd').addEventListener('click',()=>{
  const year=new Date().getFullYear(),start=Date.UTC(year,0,1),days=(Date.UTC(year+1,0,1)-start)/864e5;
  $('lat').value=Math.floor(Math.random()*181)-90;
@@ -305,6 +312,10 @@ try{
  const savedLanguage=localStorage.getItem('solar-language');
  if(savedLanguage==='es'||savedLanguage==='en')LANG=savedLanguage;
 }catch(error){console.warn('Could not read saved language preference.',error)}
+try{
+ const savedTheme=localStorage.getItem('solar-theme');
+ if(savedTheme==='light'||savedTheme==='dark')setTheme(savedTheme);
+}catch(error){console.warn('Could not read saved theme preference.',error)}
 loadLocale(LANG).then(()=>{
  fetch('ciudades.json').then(response=>{
   if(!response.ok)throw new Error(`Could not load ciudades.json (${response.status})`);
