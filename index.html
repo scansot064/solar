@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maqueta solar: azimut y elevación</title>
+<link rel="stylesheet" href="style.css">
+</head><body>
+<h1>☀️ Maqueta solar: azimut y elevación</h1>
+<div class="box" style="margin:0 0 10px;border-color:var(--ac)">⏰ <b>Aviso: todas las horas son horas solares, no la hora del reloj (huso horario).</b> A las 12:00 solares el Sol está en su punto más alto. En España el reloj va adelantado respecto a la hora solar, de media <b>1 hora en invierno y 2 horas en verano</b> (algo más o menos según la ciudad). Por ejemplo, en Madrid el Sol está más alto hacia las 13:15 del reloj en invierno y hacia las 14:15 en verano, con una variación de unos ±15 minutos a lo largo del año.
+<div class="mu" style="margin-top:6px">La declinación es un único valor para todo el día; lo que cambia cada hora es la elevación y el azimut.</div></div>
+<div class="noprint"><div class="tg" id="etg"><button type="button" class="on" data-v="sol">☀️ Sol fijo, Tierra inclinada</button><button type="button" data-v="tierra">🌍 Tierra fija, el Sol sube y baja</button></div><div id="earth"></div></div>
+<div class="ctl noprint">
+<label>Latitud (º, N+ / S−)<input id="lat" type="number" value="40" min="-90" max="90" step="1"></label>
+<label>Fecha<input id="date" type="date" value="2026-03-03"></label>
+<label>&nbsp;<button id="rnd" type="button">🎲 Latitud y fecha aleatorias</button></label>
+<label>Radio R (cm)<input id="R" type="number" value="12" min="5" max="30"></label>
+<label>Modelo<select id="mode"><option value="cupula">Cúpula (recomendado)</option><option value="poste">Poste sobre el círculo</option></select></label>
+<label>Altura máx. del poste (cm)<input id="hmax" type="number" value="30"></label>
+</div>
+<div id="sum" class="mu"></div>
+<div class="g"><div id="plan"></div><div><div id="tab"></div></div></div>
+<div id="steps" class="box noprint"></div>
+<div id="craft" class="box"></div>
+<div id="tpl" class="box noprint"><h2>📄 Plantilla imprimible (PDF)</h2>
+<div class="ctl"><label>Papel<select id="paper"><option>A4</option><option>A3</option></select></label>
+<label>&nbsp;<button id="bpdf" type="button">⬇️ Descargar PDF</button></label>
+<label>&nbsp;<button id="bpdfo" type="button">Abrir en pestaña nueva</button></label></div>
+<div id="tinfo" class="mu"></div><div id="tprev"></div></div>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="app.js"></script>
+</body></html>
