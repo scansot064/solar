@@ -23,7 +23,8 @@ async function loadLocale(lang){
  const dictionary=localeCache[lang];
  const keys=[...document.querySelectorAll('[data-i18n]')].map(node=>node.dataset.i18n)
   .concat([...document.querySelectorAll('[data-i18n-aria-label]')].map(node=>node.dataset.i18nAriaLabel))
-  .concat([...document.querySelectorAll('[data-i18n-content]')].map(node=>node.dataset.i18nContent));
+  .concat([...document.querySelectorAll('[data-i18n-content]')].map(node=>node.dataset.i18nContent))
+  .concat([...document.querySelectorAll('[data-i18n-alt]')].map(node=>node.dataset.i18nAlt));
  const missing=keys.filter(key=>typeof dictionary[key]!=='string');
  if(missing.length)throw new Error(`Missing translations in locales/${lang}.json: ${missing.join(', ')}`);
  LANG=lang;T=dictionary;
@@ -31,6 +32,8 @@ async function loadLocale(lang){
  document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=tr(node.dataset.i18n)});
  document.querySelectorAll('[data-i18n-aria-label]').forEach(node=>{node.setAttribute('aria-label',tr(node.dataset.i18nAriaLabel))});
  document.querySelectorAll('[data-i18n-content]').forEach(node=>{node.setAttribute('content',tr(node.dataset.i18nContent))});
+ document.querySelectorAll('[data-i18n-alt]').forEach(node=>{node.setAttribute('alt',tr(node.dataset.i18nAlt))});
+ document.querySelectorAll('[data-i18n-alt]').forEach(node=>{node.setAttribute('alt',tr(node.dataset.i18nAlt))});
  $('language').value=lang;
  $('status').hidden=true;
  try{localStorage.setItem('solar-language',lang)}catch(error){console.warn('Could not save language preference.',error)}
@@ -87,11 +90,11 @@ function draw(){
  s+=`<polyline points="${P.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--ac)" stroke-opacity=".5" stroke-dasharray="1 .6"/>`;
  E.forEach((o,i)=>{const [x,y]=P[i],k=o.z?'var(--bl)':'var(--ac)',lx=x*1.0+Math.sin(o.A*rad)*1.3,ly=y-Math.cos(o.A*rad)*1.3+.35;
   s+=`<circle cx="${x}" cy="${y}" r="${i==sel?.6:.4}" fill="${k}" stroke="${i==sel?'var(--fg)':'none'}" stroke-width=".15"/>`;
-  s+=`<text x="${lx}" y="${ly}" fill="${k}">${o.z?(o.tag==='sunrise'?'🌅':'🌇'):Math.round(o.t)+'h'}</text>`});
- s+=`<circle r=".5" fill="var(--fg)"/><text y="1.6" fill="var(--mu)">👁 ${tr('pdf.observer')}</text></svg>`;
+  s+=`<text x="${lx}" y="${ly}" fill="${k}">${o.z?tr(`event.${o.tag}`):Math.round(o.t)+'h'}</text>`});
+ s+=`<circle r=".5" fill="var(--fg)"/><text y="1.6" fill="var(--mu)">${tr('pdf.observer')}</text></svg>`;
  $('plan').innerHTML=s;
  let t='<table class="solar-table"><thead><tr><th>'+tr('table.time')+'</th><th>'+tr('table.elevation')+'</th><th>'+tr('table.azimuth')+'</th>'+(S.mode=='cupula'?'<th>'+tr('table.distance')+'</th>':'')+'<th>'+tr('table.pole')+'</th></tr></thead><tbody>';
- E.forEach((o,i)=>t+=`<tr data-i="${i}" tabindex="0" class="${i==sel?'sel':''}"><td>${tf(o.t)}${o.tag?' '+(o.tag==='sunrise'?'🌅 ':'🌇 ')+tr(`event.${o.tag}`):''}</td><td>${f(o.e,0)}º</td><td>${f(o.A,0)}º</td>${S.mode=='cupula'?'<td>'+f(o.r)+'</td>':''}<td>${f(o.h)}${o.cap?' ⚠️':''}</td></tr>`);
+ E.forEach((o,i)=>t+=`<tr data-i="${i}" tabindex="0" class="${i==sel?'sel':''}"><td>${tf(o.t)}${o.tag?' '+tr(`event.${o.tag}`):''}</td><td>${f(o.e,0)}º</td><td>${f(o.A,0)}º</td>${S.mode=='cupula'?'<td>'+f(o.r)+'</td>':''}<td>${f(o.h)}${o.cap?' *':''}</td></tr>`);
  $('tab').innerHTML=t+'</tbody></table><p class="mu noprint table-note">'+tr('table.solarTime')+' '+tr('table.rounding')+' '+tr('table.rowHelp')+(E.some(o=>o.cap)?tr('table.trimmed'):'')+'</p>';
  steps();
 }
@@ -123,8 +126,8 @@ function earthSol(){
  const th=lat*rad-dr,[ax,ay]=P(lat),[ox,oy]=P(lat,r+12);
  if(Math.cos(th)>0)s+=L([225,ay],[ax,ay],'var(--ac)',1.6)+'/>';
  s+=L([ax-14*Math.sin(th),ay-14*Math.cos(th)],[ax+14*Math.sin(th),ay+14*Math.cos(th)],'var(--bl)',1.4)+'/>';
- s+=`<circle cx="${ax}" cy="${ay}" r="2.5" fill="var(--bl)"/><text x="${ox}" y="${oy+5}" font-size="15" text-anchor="middle">🧍</text>`;
- s+=`<text x="242" y="${cy+8}" font-size="24" text-anchor="middle">☀️</text><text x="242" y="${cy+24}" text-anchor="middle" fill="var(--mu)">${tr('svg.fixedSun')}</text></svg>`;
+ s+=`<circle cx="${ax}" cy="${ay}" r="3.5" fill="var(--bl)" stroke="var(--bg)" stroke-width="1.5"/><circle cx="${ax}" cy="${ay}" r="6" fill="none" stroke="var(--bl)" stroke-opacity=".5"/>`;
+ s+=`<circle cx="242" cy="${cy+5}" r="8" fill="var(--day)"/><g stroke="var(--day)" stroke-width="1.5"><path d="M242 ${cy-8}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/></g><text x="242" y="${cy+24}" text-anchor="middle" fill="var(--mu)">${tr('svg.fixedSun')}</text></svg>`;
  const em=90-Math.abs(lat-d),tilt=Math.abs(d)<1?tr('earth.solarAxisStill'):tr('earth.axisTilt',{degrees:f(Math.abs(d)),direction:tr(d>0?'earth.axisToward':'earth.axisAway')+' '});
  const elevation=em>0?tr('earth.elevation',{value:f(em,0)}):tr('earth.noSun');
  $('earth').innerHTML=s+`<div class="mu">${tr('earth.solIntro',{tilt,declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div><div class="mu">${ciudades(lat)}</div>`;
@@ -143,8 +146,8 @@ function earthTierra(){
  const th=lat*rad,[ax,ay]=P(lat),[ox,oy]=P(lat,r+12);
  if(Math.cos(th-d*rad)>0)s+=`<line x1="${ax}" y1="${ay}" x2="${ax+140*sx}" y2="${ay-140*sy}" stroke="var(--ac)" stroke-width="1.6"/>`;
  s+=`<line x1="${ax-14*Math.sin(th)}" y1="${ay-14*Math.cos(th)}" x2="${ax+14*Math.sin(th)}" y2="${ay+14*Math.cos(th)}" stroke="var(--bl)" stroke-width="1.4"/>`;
- s+=`<circle cx="${ax}" cy="${ay}" r="2.5" fill="var(--bl)"/><text x="${ox}" y="${oy+5}" font-size="15" text-anchor="middle">🧍</text>`;
- s+=`<text x="${cx+160*sx}" y="${cy-160*sy+8}" font-size="24" text-anchor="middle">☀️</text></svg>`;
+ s+=`<circle cx="${ax}" cy="${ay}" r="3.5" fill="var(--bl)" stroke="var(--bg)" stroke-width="1.5"/><circle cx="${ax}" cy="${ay}" r="6" fill="none" stroke="var(--bl)" stroke-opacity=".5"/>`;
+ s+=`<circle cx="${cx+160*sx}" cy="${cy-160*sy}" r="8" fill="var(--day)"/><g stroke="var(--day)" stroke-width="1.5"><path d="M${cx+160*sx} ${cy-160*sy-13}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/></g></svg>`;
  const em=90-Math.abs(lat-d);
  const elevation=em>0?tr('earth.elevation',{value:f(em,0)}):tr('earth.noSun');
  $('earth').innerHTML=s+`<div class="mu">${tr('earth.tierraIntro',{declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div><div class="mu">${ciudades(lat)}</div>`;

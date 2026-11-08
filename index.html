@@ -4,78 +4,120 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explora el recorrido del Sol según la latitud y la fecha." data-i18n-content="app.description">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#08131e">
   <title data-i18n="app.title">Maqueta solar: azimut y elevación</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="jspdf.umd.min.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
-  <header class="page-header">
-    <h1 data-i18n="app.title">☀️ Maqueta solar: azimut y elevación</h1>
-    <label class="language-picker" for="language"><span data-i18n="language.label">Idioma</span>
-      <select id="language" name="language">
-        <option value="es" lang="es">Español</option>
-        <option value="en" lang="en">English</option>
-      </select>
-    </label>
-  </header>
-  <main>
-    <section class="box intro" aria-label="Información" data-i18n-aria-label="intro.label">
-      <p><strong data-i18n="intro.heading">⏰ Aviso: todas las horas son horas solares, no la hora del reloj (huso horario).</strong>
-        <span data-i18n="intro.clock">A las 12:00 solares el Sol está en su punto más alto. En España el reloj va adelantado respecto a la hora solar, de media 1 hora en invierno y 2 horas en verano (algo más o menos según la ciudad). Por ejemplo, en Madrid el Sol está más alto hacia las 13:15 del reloj en invierno y hacia las 14:15 en verano, con una variación de unos ±15 minutos a lo largo del año.</span></p>
-      <p class="mu intro-note" data-i18n="intro.declination">La declinación es un único valor para todo el día; lo que cambia cada hora es la elevación y el azimut.</p>
-    </section>
-    <section class="noprint" aria-label="Vista de la Tierra" data-i18n-aria-label="earth.section">
-      <div class="tg" id="etg" role="group" data-i18n-aria-label="earth.views">
-        <button type="button" class="on" data-v="sol" aria-pressed="true" data-i18n="earth.fixedSun">☀️ Sol fijo, Tierra inclinada</button>
-        <button type="button" data-v="tierra" aria-pressed="false" data-i18n="earth.fixedEarth">🌍 Tierra fija, el Sol sube y baja</button>
-      </div>
-      <div id="earth" aria-live="polite"></div>
-    </section>
-    <section class="ctl noprint" aria-label="Controles" data-i18n-aria-label="controls.label">
-      <label for="lat"><span data-i18n="controls.latitude">Latitud (º, N+ / S−)</span>
-        <input id="lat" type="number" value="40" min="-90" max="90" step="1">
-      </label>
-      <label for="date"><span data-i18n="controls.date">Fecha</span>
-        <input id="date" type="date" value="2026-03-03">
-      </label>
-      <div class="button-field">
-        <button id="rnd" type="button" data-i18n="controls.random">🎲 Latitud y fecha aleatorias</button>
-      </div>
-      <label for="R"><span data-i18n="controls.radius">Radio R (cm)</span>
-        <input id="R" type="number" value="12" min="5" max="30">
-      </label>
-      <label for="mode"><span data-i18n="controls.model">Modelo</span>
-        <select id="mode">
-          <option value="cupula" data-i18n="model.dome">Cúpula (recomendado)</option>
-          <option value="poste" data-i18n="model.pole">Poste sobre el círculo</option>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Solar">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span class="brand-copy"><strong>ORBITAL</strong><small>FIELD NOTES · 01</small></span>
+      </a>
+      <label class="language-picker" for="language"><span data-i18n="language.label">Idioma</span>
+        <select id="language" name="language">
+          <option value="es" lang="es">Español</option>
+          <option value="en" lang="en">English</option>
         </select>
       </label>
-      <label id="hmax-label" for="hmax"><span data-i18n="controls.maxPole">Altura máx. del poste (cm)</span>
-        <input id="hmax" type="number" value="30">
-      </label>
-    </section>
-    <p id="status" class="status" role="status" aria-live="polite" hidden></p>
-    <p id="sum" class="mu" aria-live="polite"></p>
-    <section class="g" aria-label="Recorrido solar" data-i18n-aria-label="results.label">
-      <div id="plan"></div>
-      <div id="tab"></div>
-    </section>
-    <section id="steps" class="box noprint" aria-live="polite"></section>
-    <section id="craft" class="box"></section>
-    <section id="tpl" class="box noprint">
-      <h2 data-i18n="pdf.title">📄 Plantilla imprimible (PDF)</h2>
-      <div class="ctl">
-        <label for="paper"><span data-i18n="pdf.paper">Papel</span>
-          <select id="paper"><option>A4</option><option>A3</option></select>
-        </label>
-        <button id="bpdf" type="button" data-i18n="pdf.download">⬇️ Descargar PDF</button>
-        <button id="bpdfo" type="button" data-i18n="pdf.open">Abrir en pestaña nueva</button>
-      </div>
-      <p id="tinfo" class="mu" aria-live="polite"></p>
-      <div id="tprev"></div>
-    </section>
-  </main>
+    </header>
+    <main>
+      <figure class="hero">
+        <img class="hero-image" src="assets/iss-earth.jpg" alt="La Tierra y su atmósfera vistas desde la Estación Espacial Internacional" data-i18n-alt="hero.imageAlt" fetchpriority="high">
+        <div class="hero-shade" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow" data-i18n="hero.eyebrow">OBSERVATORIO SOLAR · LATITUD / FECHA</p>
+          <h1 data-i18n="app.title">Maqueta solar: azimut y elevación</h1>
+          <p class="hero-description"><strong data-i18n="intro.heading">Todas las horas son solares, no las del reloj.</strong> <span data-i18n="intro.clock">A las 12:00 solares el Sol está en su punto más alto.</span></p>
+          <p class="hero-note" data-i18n="hero.tagline">Traza la posición del Sol a lo largo del día, desde cualquier latitud.</p>
+        </div>
+        <figcaption class="media-credit">
+          <span data-i18n="hero.credit">Imagen: NASA · Expedition 65</span>
+          <a href="https://images.nasa.gov/details/jsc2022m000172_Earth_in_4K_Expedition_65_Edition" target="_blank" rel="noreferrer" data-i18n="hero.source">Ver fuente</a>
+        </figcaption>
+      </figure>
+
+      <section class="intro-strip" aria-label="Información" data-i18n-aria-label="intro.label">
+        <span class="info-mark" aria-hidden="true">δ</span>
+        <p class="intro-note" data-i18n="intro.declination">La declinación es un único valor para todo el día; lo que cambia cada hora es la elevación y el azimut.</p>
+      </section>
+
+      <section class="workspace noprint" aria-label="Vista de la Tierra" data-i18n-aria-label="earth.section">
+        <div class="section-heading">
+          <div><p class="eyebrow" data-i18n="controls.eyebrow">CONFIGURACIÓN</p><h2 data-i18n="earth.section">Vista de la Tierra</h2></div>
+          <div class="tg" id="etg" role="group" data-i18n-aria-label="earth.views">
+            <button type="button" class="on" data-v="sol" aria-pressed="true" data-i18n="earth.fixedSun">Sol fijo, Tierra inclinada</button>
+            <button type="button" data-v="tierra" aria-pressed="false" data-i18n="earth.fixedEarth">Tierra fija, el Sol sube y baja</button>
+          </div>
+        </div>
+        <div id="earth" aria-live="polite"></div>
+      </section>
+
+      <section class="control-panel noprint" aria-label="Controles" data-i18n-aria-label="controls.label">
+        <div class="section-heading compact-heading">
+          <div><p class="eyebrow" data-i18n="controls.eyebrow">CONFIGURACIÓN</p><h2 data-i18n="controls.sectionTitle">Elige tu punto de observación</h2></div>
+          <span class="step-index">01 — 02</span>
+        </div>
+        <div class="ctl">
+          <label for="lat"><span data-i18n="controls.latitude">Latitud (º, N+ / S−)</span>
+            <input id="lat" type="number" value="40" min="-90" max="90" step="1">
+          </label>
+          <label for="date"><span data-i18n="controls.date">Fecha</span>
+            <input id="date" type="date" value="2026-03-03">
+          </label>
+          <div class="button-field">
+            <button id="rnd" type="button" class="button-secondary"><span class="button-icon" aria-hidden="true">↻</span><span data-i18n="controls.random">Latitud y fecha aleatorias</span></button>
+          </div>
+          <label for="R"><span data-i18n="controls.radius">Radio R (cm)</span>
+            <input id="R" type="number" value="12" min="5" max="30">
+          </label>
+          <label for="mode"><span data-i18n="controls.model">Modelo</span>
+            <select id="mode">
+              <option value="cupula" data-i18n="model.dome">Cúpula (recomendado)</option>
+              <option value="poste" data-i18n="model.pole">Poste sobre el círculo</option>
+            </select>
+          </label>
+          <label id="hmax-label" for="hmax"><span data-i18n="controls.maxPole">Altura máx. del poste (cm)</span>
+            <input id="hmax" type="number" value="30">
+          </label>
+        </div>
+      </section>
+      <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+
+      <section class="results-section">
+        <div class="section-heading results-heading">
+          <div><p class="eyebrow" data-i18n="results.eyebrow">TRAYECTORIA DIARIA</p><h2 data-i18n="results.label">Recorrido solar</h2></div>
+          <p id="sum" class="summary mu" aria-live="polite"></p>
+        </div>
+        <div class="g" aria-label="Recorrido solar" data-i18n-aria-label="results.label">
+          <div id="plan" class="result-card chart-card"></div>
+          <div id="tab" class="result-card table-card"></div>
+        </div>
+      </section>
+      <section id="steps" class="box noprint" aria-live="polite"></section>
+      <section id="craft" class="box"></section>
+      <section id="tpl" class="box noprint">
+        <div class="section-heading compact-heading">
+          <div><p class="eyebrow" data-i18n="pdf.eyebrow">PARA LLEVAR</p><h2 data-i18n="pdf.title">Plantilla imprimible (PDF)</h2></div>
+          <div class="ctl pdf-controls">
+            <label for="paper"><span data-i18n="pdf.paper">Papel</span>
+              <select id="paper"><option>A4</option><option>A3</option></select>
+            </label>
+            <button id="bpdf" type="button" class="button-primary" data-i18n="pdf.download">Descargar PDF</button>
+            <button id="bpdfo" type="button" class="button-secondary" data-i18n="pdf.open">Abrir en pestaña nueva</button>
+          </div>
+        </div>
+        <p id="tinfo" class="mu" aria-live="polite"></p>
+        <div id="tprev"></div>
+      </section>
+    </main>
+    <footer class="site-footer"><span>ORBITAL FIELD NOTES</span><span data-i18n="footer.caption">Una maqueta del recorrido aparente del Sol.</span></footer>
+  </div>
 </body>
 </html>
