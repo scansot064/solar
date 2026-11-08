@@ -68,9 +68,11 @@
           <span class="step-index">01 — 02</span>
         </div>
         <div class="ctl">
-          <label for="lat"><span data-i18n="controls.latitude">Latitud (º, N+ / S−)</span>
+          <div class="latitude-field">
+            <label for="lat" data-i18n="controls.latitude">Latitud (º, N+ / S−)</label>
             <input id="lat" type="number" value="40" min="-90" max="90" step="1">
-          </label>
+            <p id="cities" class="cities-note" aria-live="polite"></p>
+          </div>
           <label for="date"><span data-i18n="controls.date">Fecha</span>
             <input id="date" type="date" value="2026-03-03">
           </label>

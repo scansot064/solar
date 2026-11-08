@@ -33,7 +33,6 @@ async function loadLocale(lang){
  document.querySelectorAll('[data-i18n-aria-label]').forEach(node=>{node.setAttribute('aria-label',tr(node.dataset.i18nAriaLabel))});
  document.querySelectorAll('[data-i18n-content]').forEach(node=>{node.setAttribute('content',tr(node.dataset.i18nContent))});
  document.querySelectorAll('[data-i18n-alt]').forEach(node=>{node.setAttribute('alt',tr(node.dataset.i18nAlt))});
- document.querySelectorAll('[data-i18n-alt]').forEach(node=>{node.setAttribute('alt',tr(node.dataset.i18nAlt))});
  $('language').value=lang;
  $('status').hidden=true;
  try{localStorage.setItem('solar-language',lang)}catch(error){console.warn('Could not save language preference.',error)}
@@ -50,6 +49,9 @@ function ciudades(lat){
  const m=CIUDADES.reduce((a,b)=>Math.abs(b.lat-lat)<Math.abs(a.lat-lat)?b:a);
  if(Math.abs(m.lat-lat)<=3)return tr('cities.closest',{name:m.nombre,latitude:n(m.lat)});
  return tr('cities.empty');
+}
+function updateCities(){
+ $('cities').textContent=ciudades(+$('lat').value);
 }
 
 function run(keep){
@@ -77,6 +79,7 @@ function run(keep){
  $('sum').innerHTML=!E.length?tr('summary.polarNight'):
   (H0==180?tr('summary.polarDay'):'')+tr('summary.declination',{value:f(dec)})+' · '+tr('summary.daylight',{value:f(H0/7.5)});
  earth();
+ updateCities();
  if(!keep||sel>=E.length){sel=0;E.forEach((o,i)=>{if(o.e>E[sel].e)sel=i})}
  draw();tplUpdate();
 }
@@ -130,7 +133,7 @@ function earthSol(){
  s+=`<circle cx="242" cy="${cy+5}" r="8" fill="var(--day)"/><g stroke="var(--day)" stroke-width="1.5"><path d="M242 ${cy-8}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/></g><text x="242" y="${cy+24}" text-anchor="middle" fill="var(--mu)">${tr('svg.fixedSun')}</text></svg>`;
  const em=90-Math.abs(lat-d),tilt=Math.abs(d)<1?tr('earth.solarAxisStill'):tr('earth.axisTilt',{degrees:f(Math.abs(d)),direction:tr(d>0?'earth.axisToward':'earth.axisAway')+' '});
  const elevation=em>0?tr('earth.elevation',{value:f(em,0)}):tr('earth.noSun');
- $('earth').innerHTML=s+`<div class="mu">${tr('earth.solIntro',{tilt,declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div><div class="mu">${ciudades(lat)}</div>`;
+ $('earth').innerHTML=s+`<div class="mu">${tr('earth.solIntro',{tilt,declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div>`;
 }
 let EV='sol';
 function earth(){EV=='sol'?earthSol():earthTierra()}
@@ -150,7 +153,7 @@ function earthTierra(){
  s+=`<circle cx="${cx+160*sx}" cy="${cy-160*sy}" r="8" fill="var(--day)"/><g stroke="var(--day)" stroke-width="1.5"><path d="M${cx+160*sx} ${cy-160*sy-13}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/></g></svg>`;
  const em=90-Math.abs(lat-d);
  const elevation=em>0?tr('earth.elevation',{value:f(em,0)}):tr('earth.noSun');
- $('earth').innerHTML=s+`<div class="mu">${tr('earth.tierraIntro',{declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div><div class="mu">${ciudades(lat)}</div>`;
+ $('earth').innerHTML=s+`<div class="mu">${tr('earth.tierraIntro',{declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div>`;
 }
 let drag=0;const eb=$('earth');
 const pick=e=>{const so=EV=='sol',cx=so?95:70,b=eb.querySelector('svg').getBoundingClientRect(),x=(e.clientX-b.left)*260/b.width-cx,y=100-(e.clientY-b.top)*200/b.height;
@@ -308,8 +311,8 @@ loadLocale(LANG).then(()=>{
   return response.json();
  }).then(data=>{
   if(!Array.isArray(data))throw new Error('ciudades.json must contain an array');
-  CIUDADES=data;earth();
- }).catch(error=>{console.error(error);CIUDADES=[];earth()});
+  CIUDADES=data;updateCities();earth();
+ }).catch(error=>{console.error(error);CIUDADES=[];updateCities();earth()});
 }).catch(error=>{
  console.error(error);
  $('status').textContent=error.message;
