@@ -51,7 +51,7 @@ h3 { font-weight: 600; letter-spacing: -.025em; }
 .brand-mark::after { width: 7px; height: 7px; border: 0; background: var(--ac); box-shadow: 0 0 12px rgb(243 173 120 / 85%); }
 .brand-mark span { width: 29px; height: 13px; transform: rotate(-35deg); }
 .brand-copy { display: grid; line-height: 1.2; }
-.brand-copy strong { font-size: .88rem; letter-spacing: .16em; }
+.brand-copy strong { font-size: .86rem; letter-spacing: .01em; }
 .brand-copy small, .eyebrow, .step-index, .site-footer { color: var(--mu); font-size: .68rem; font-weight: 600; letter-spacing: .15em; }
 .language-picker { min-width: 132px; }
 .language-picker > span, label { color: var(--mu); font-size: .78rem; font-weight: 500; }
@@ -93,6 +93,9 @@ select { cursor: pointer; }
 .intro-strip { display: flex; align-items: flex-start; gap: 14px; margin: -18px 0 38px; padding: 18px 20px; border: 1px solid var(--ln); border-radius: 14px; background: rgb(14 28 40 / 78%); }
 .intro-strip p { margin: 0; color: var(--mu); font-size: .88rem; }
 .intro-strip strong { color: var(--fg); font-weight: 600; }
+.intro-copy p + p { margin-top: 8px; }
+.intro-copy .disclaimer { color: var(--mu); }
+.project-description { max-width: 860px; margin: -4px 0 20px; color: #c1ccd1; font-size: .96rem; line-height: 1.7; }
 .info-mark { display: grid; width: 22px; height: 22px; flex: 0 0 22px; place-items: center; border: 1px solid var(--ac); border-radius: 50%; color: var(--ac); font-family: var(--font-display); font-size: .8rem; }
 .workspace, .control-panel, .box, .result-card { border: 1px solid var(--ln); border-radius: 18px; background: linear-gradient(145deg, rgb(18 36 50 / 94%), rgb(12 26 37 / 96%)); }
 .workspace { margin-bottom: 18px; padding: clamp(18px, 3vw, 30px); }

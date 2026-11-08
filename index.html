@@ -18,7 +18,7 @@
     <header class="site-header">
       <a class="brand" href="./" aria-label="Solar">
         <span class="brand-mark" aria-hidden="true"><span></span></span>
-        <span class="brand-copy"><strong>ORBITAL</strong><small>FIELD NOTES · 01</small></span>
+        <span class="brand-copy"><strong>Geography and Climate project</strong></span>
       </a>
       <label class="language-picker" for="language"><span data-i18n="language.label">Idioma</span>
         <select id="language" name="language">
@@ -34,8 +34,7 @@
         <div class="hero-copy">
           <p class="eyebrow" data-i18n="hero.eyebrow">OBSERVATORIO SOLAR · LATITUD / FECHA</p>
           <h1 data-i18n="app.title">Maqueta solar: azimut y elevación</h1>
-          <p class="hero-description"><strong data-i18n="intro.heading">Todas las horas son solares, no las del reloj.</strong> <span data-i18n="intro.clock">A las 12:00 solares el Sol está en su punto más alto.</span></p>
-          <p class="hero-note" data-i18n="hero.tagline">Traza la posición del Sol a lo largo del día, desde cualquier latitud.</p>
+          <p class="hero-description" data-i18n="hero.tagline">Traza la posición del Sol a lo largo del día, desde cualquier latitud.</p>
         </div>
         <figcaption class="media-credit">
           <span data-i18n="hero.credit">Imagen: NASA · Expedition 65</span>
@@ -45,7 +44,11 @@
 
       <section class="intro-strip" aria-label="Información" data-i18n-aria-label="intro.label">
         <span class="info-mark" aria-hidden="true">δ</span>
-        <p class="intro-note" data-i18n="intro.declination">La declinación es un único valor para todo el día; lo que cambia cada hora es la elevación y el azimut.</p>
+        <div class="intro-copy">
+          <p class="disclaimer"><strong data-i18n="intro.heading">Todas las horas son solares, no las del reloj.</strong> <span data-i18n="intro.clock">A las 12:00 solares el Sol alcanza su punto más alto.</span></p>
+          <p data-i18n="intro.declination">La declinación es un único valor para todo el día; lo que cambia cada hora es la elevación y el azimut.</p>
+          <p data-i18n="intro.angles">La declinación indica cuánto se inclina el Sol hacia el norte o el sur durante el año. La elevación es la altura del Sol sobre el horizonte. El azimut indica la dirección en la que está el Sol, medida desde el norte.</p>
+        </div>
       </section>
 
       <section class="workspace noprint" aria-label="Vista de la Tierra" data-i18n-aria-label="earth.section">
@@ -95,6 +98,7 @@
           <div><p class="eyebrow" data-i18n="results.eyebrow">TRAYECTORIA DIARIA</p><h2 data-i18n="results.label">Recorrido solar</h2></div>
           <p id="sum" class="summary mu" aria-live="polite"></p>
         </div>
+        <p class="project-description" data-i18n="results.projectDescription">En este proyecto investigarás cómo cambia la posición del Sol según el lugar y la fecha. Elige una latitud y un día, y explora el dibujo y la tabla para descubrir por dónde sale el Sol, qué altura alcanza y cuánto dura el día. Después, usa esos datos para construir una maqueta de su recorrido en el cielo.</p>
         <div class="g" aria-label="Recorrido solar" data-i18n-aria-label="results.label">
           <div id="plan" class="result-card chart-card"></div>
           <div id="tab" class="result-card table-card"></div>
@@ -117,7 +121,7 @@
         <div id="tprev"></div>
       </section>
     </main>
-    <footer class="site-footer"><span>ORBITAL FIELD NOTES</span><span data-i18n="footer.caption">Una maqueta del recorrido aparente del Sol.</span></footer>
+    <footer class="site-footer"><span>Geography and Climate project</span><span data-i18n="footer.caption">Una maqueta del recorrido aparente del Sol.</span></footer>
   </div>
 </body>
 </html>
