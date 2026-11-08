@@ -53,6 +53,7 @@
   --button-fg: #fff;
   --primary-hover: #8f4214;
 }
+:root[data-theme="light"] .hero h1 { color: #ffd18a; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
