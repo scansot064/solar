@@ -193,7 +193,7 @@ function lines(o,k){return [tf(o.t)].concat(o.z?[tr(`event.${o.tag}`)]:[],[f(o.h
 function lbl(o,x,y,k,v=0){const L=lines(o,k),w=Math.max(...L.map(t=>t.length))*1.5+1,h=L.length*3.3,u0=Math.sin(o.A*rad),v0=-Math.cos(o.A*rad),[ux,uy]=[[u0,v0],[-u0,-v0],[-v0,u0],[v0,-u0]][v],lx=x+ux*2.8,ly=y+uy*2.8,an=ux>.35?'start':ux<-.35?'end':'middle',bx=an=='start'?lx:an=='end'?lx-w:lx-w/2,by=uy<-.5?ly-h:uy>.5?ly:ly-h/2;return{L,an,tx:lx,ty:by+2.4,box:[bx,by,bx+w,by+h]}}
 function mk(){
  if(!E.length)return null;
- const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,hh=20,cw=78;
+ const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,hh=16,cw=78;
  const an=E.map(o=>o.A).sort((x,y)=>x-y);let mi=0,G=-1;
  an.forEach((x,i)=>{const g=i<an.length-1?an[i+1]-x:an[0]+360-x;if(g>G){G=g;mi=i}});
  const full=G<70,a0=full?0:an[(mi+1)%an.length]-12,len=full?360:360-G+24,ia=a=>full||((a-a0+720)%360)<=len,gc=full?Math.PI:(an[mi]+G/2)*rad;
@@ -210,7 +210,7 @@ function mk(){
   const observerX=8*Math.sin(gc),observerY=-8*Math.cos(gc)+1.2;
   ab([observerX-12,observerY-3,observerX+12,observerY+3]);
   placed.push([-5,-5,5,5]);
-  CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad),box=[x-3.5,y-3.5,x+3.5,y+3.5];ab(box);placed.push(box)}});
+  CARD.forEach(([nm,a])=>{if(ia(a)&&a!==0){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad),box=[x-3.5,y-3.5,x+3.5,y+3.5];ab(box);placed.push(box)}});
   E.forEach((o,i)=>{const [x,y]=positions[i];let box;
    for(let v=0;v<4;v++){const l=lbl(o,x,y,k,v);box=[l.box[0],l.box[1],l.box[2],l.box[3]];if(!placed.some(other=>overlaps(other,box)))break;if(v===3){const l0=lbl(o,x,y,k,0);box=[l0.box[0],l0.box[1],l0.box[2],l0.box[3]]}}
    placed.push(box);ab(box)});
@@ -218,7 +218,7 @@ function mk(){
  const hit=(r,O,ox,oy)=>{for(const q of O.pts){const x=q[0]+ox,y=q[1]+oy;if(x>r[0]&&x<r[2]&&y>r[1]&&y<r[3])return 1}
   for(const b of O.bx)if(b[0]+ox<r[2]&&b[2]+ox>r[0]&&b[1]+oy<r[3]&&b[3]+oy>r[1])return 1;return 0};
  // Coloca dibujo y tabla (en una esquina libre) para un radio dado
- const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m+hh,ah=H-m-ay;
+ const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m+hh,tableTop=m+26,ah=H-m-ay;
   if(bw>aw||bh>ah)return null;
   const groupW=cols>1?64:cw,rowH=cols>1?3:4.2,rc=Math.ceil(n/cols),tw=cols*groupW+(cols-1)*6,th=(rc+1)*rowH;
  const offsets=[];
@@ -236,7 +236,7 @@ function mk(){
   const ys=[ay,(ay+H-m-th)/2,H-m-th,oy+bb[1],oy+(bb[1]+bb[3]-th)/2,oy+bb[3]-th];
   xs.forEach(tx=>ys.forEach(ty=>slots.push([tx,ty])));
   for(const [slotIndex,[tx,ty]] of slots.entries()){
-   if(tx<m||tx+tw>W-m||ty<ay||ty+th>H-m)continue;
+   if(tx<m||tx+tw>W-m||ty<tableTop||ty+th>H-m)continue;
    if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy))return{ox,oy,tx,ty,cols,rc,tw,th,groupW,rowH,night:slotIndex<nightSlots.length}
   }
  }
@@ -259,8 +259,11 @@ function mk(){
  const TT=(x,y,s,pt,c,al='start',b=0)=>tableItems.push({k:'t',x,y,s,pt,c,an:al,b});
  const dateTxt=new Date($('date').value+'T12:00:00Z').toLocaleDateString(LANG,{day:'numeric',month:'long',timeZone:'UTC'});
  const scaling=Rc<R0?tr('pdf.scaledDown',{radius:f(R0)}):Rc>R0?tr('pdf.scaledUp',{radius:f(R0)}):'';
- T(m,m+5,tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),13,G1,'start',1);
- T(m,m+11,tr('pdf.subtitle',{declination:f(S.dec),radius:f(Rc),scaling,model:tr(cup?'pdf.modelDome':'pdf.modelPole'),paper:pk}),8,G1);
+ const title=tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),titleLines=[];
+ title.split(/\s+/).forEach(word=>{const last=titleLines.length-1;if(last<0||`${titleLines[last]} ${word}`.length>35)titleLines.push(word);else titleLines[last]+=' '+word});
+ titleLines.slice(0,-1).forEach((line,i)=>{if(line.endsWith(' -'))titleLines[i]=line.slice(0,-2)});
+ titleLines.forEach((line,i)=>T(m,m+4+i*3.7,line,10.5,G1,'start',1));
+ T(m,m+13,tr('pdf.subtitle',{declination:f(S.dec),radius:f(Rc),scaling,model:tr(cup?'pdf.modelDome':'pdf.modelPole'),paper:pk}),8,G1);
  T(m,m+21,tr('pdf.solarTime'),8,G1,'start',1);
  T(m,m+16,tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),8,G1);
  P.push({k:'l',x1:W-m-50,y1:m+3,x2:W-m,y2:m+3,c:G1,w:.4});T(W-m,m+7,tr('pdf.scaleCheck'),6.5,G1,'end');
@@ -271,11 +274,11 @@ function mk(){
  const arc=[];for(let q=0;q<=len;q++){const t=(a0+q)*rad;arc.push([ox+Rm*Math.sin(t),oy-Rm*Math.cos(t)])}
  P.push({k:'p',pts:arc,c:BK,w:.4});
  CARD.forEach(([nm,a])=>{if(ia(a)){const s_=Math.sin(a*rad),c_=-Math.cos(a*rad);
-  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3,nm,10,BK,'middle',1)}});
+  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3-(a===0?5:0),nm,10,BK,'middle',1)}});
  const hit2=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
  const pos=E.map(o=>{const rr=o.r*k*10;return[ox+rr*Math.sin(o.A*rad),oy-rr*Math.cos(o.A*rad)]});
  const placed=pos.map(q=>[q[0]-1.8,q[1]-1.8,q[0]+1.8,q[1]+1.8]);placed.push([ox-5,oy-5,ox+5,oy+5]);
- CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
+ CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad)-(a===0?5:0);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
  const LB=[];
  E.forEach((o,i)=>{const [x,y]=pos[i];
   P.push({k:'l',x1:ox,y1:oy,x2:x,y2:y,c:BK,w:.12});P.push({k:'c',x,y,r:1.1,c:BK,fill:1});
