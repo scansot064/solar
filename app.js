@@ -193,7 +193,7 @@ function lines(o,k){return [tf(o.t)].concat(o.z?[tr(`event.${o.tag}`)]:[],[f(o.h
 function lbl(o,x,y,k,v=0){const L=lines(o,k),w=Math.max(...L.map(t=>t.length))*1.5+1,h=L.length*3.3,u0=Math.sin(o.A*rad),v0=-Math.cos(o.A*rad),[ux,uy]=[[u0,v0],[-u0,-v0],[-v0,u0],[v0,-u0]][v],lx=x+ux*2.8,ly=y+uy*2.8,an=ux>.35?'start':ux<-.35?'end':'middle',bx=an=='start'?lx:an=='end'?lx-w:lx-w/2,by=uy<-.5?ly-h:uy>.5?ly:ly-h/2;return{L,an,tx:lx,ty:by+2.4,box:[bx,by,bx+w,by+h]}}
 function mk(){
  if(!E.length)return null;
- const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,hh=24,rh=4.2,cw=78;
+ const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,hh=20,cw=78;
  const an=E.map(o=>o.A).sort((x,y)=>x-y);let mi=0,G=-1;
  an.forEach((x,i)=>{const g=i<an.length-1?an[i+1]-x:an[0]+360-x;if(g>G){G=g;mi=i}});
  const full=G<70,a0=full?0:an[(mi+1)%an.length]-12,len=full?360:360-G+24,ia=a=>full||((a-a0+720)%360)<=len,gc=full?Math.PI:(an[mi]+G/2)*rad;
@@ -220,25 +220,34 @@ function mk(){
  // Coloca dibujo y tabla (en una esquina libre) para un radio dado
  const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m+hh,ah=H-m-ay;
   if(bw>aw||bh>ah)return null;
-  const rc=Math.ceil(n/cols),tw=cols*cw+(cols-1)*6,th=(rc+1)*rh;
+  const groupW=cols>1?64:cw,rowH=cols>1?3:4.2,rc=Math.ceil(n/cols),tw=cols*groupW+(cols-1)*6,th=(rc+1)*rowH;
  const offsets=[];
  for(const fy of[1,.5,0])for(const fx of[.5,0,1])offsets.push([m+fx*(aw-bw)-bb[0],ay+fy*(ah-bh)-bb[1]]);
  for(const [ox,oy] of offsets){
   const slots=[[W-m-tw,oy+bb[1]+9],[m,oy+bb[1]+9],[W-m-tw,H-m-th],[m,H-m-th]];
-  const xs=[m,W/2-tw/2,W-m-tw,ox+bb[0],ox+(bb[0]+bb[2]-tw)/2,ox+bb[2]-tw];
+ const nightSlots=[];
+ if(!full)for(const distance of[.47,.45,.43,.5])for(const cross of[0,-.08,.08]){
+  const nightX=ox+Math.sin(gc)*Rm*distance+Math.cos(gc)*Rm*cross;
+  const nightY=oy-Math.cos(gc)*Rm*distance+Math.sin(gc)*Rm*cross;
+  nightSlots.push([nightX-tw/2,nightY-th/2])
+ }
+ slots.unshift(...nightSlots);
+ const xs=[m,W/2-tw/2,W-m-tw,ox+bb[0],ox+(bb[0]+bb[2]-tw)/2,ox+bb[2]-tw];
   const ys=[ay,(ay+H-m-th)/2,H-m-th,oy+bb[1],oy+(bb[1]+bb[3]-th)/2,oy+bb[3]-th];
   xs.forEach(tx=>ys.forEach(ty=>slots.push([tx,ty])));
-  for(const [tx,ty] of slots){
+  for(const [slotIndex,[tx,ty]] of slots.entries()){
    if(tx<m||tx+tw>W-m||ty<ay||ty+th>H-m)continue;
-   if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy))return{ox,oy,tx,ty,cols,rc,tw,th}
+   if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy))return{ox,oy,tx,ty,cols,rc,tw,th,groupW,rowH,night:slotIndex<nightSlots.length}
   }
  }
  return null};
  let best=null;
  [0,1].forEach(land=>[1,2,3].forEach(cols=>{const W=land?pb:pa,H=land?pa:pb;
-  const fe=Rm=>place(W,H,cols,Rm,1);let lo=15,hi=pk=='A3'?400:R0*10,Rm;
-  if(fe(hi))Rm=hi;else if(!fe(lo))return;else{for(let i=0;i<28;i++){const mid=(lo+hi)/2;fe(mid)?lo=mid:hi=mid}Rm=lo}
-  const Rc=Math.max(3,Math.floor(Rm/10*2)/2);if(!best||Rc>best.Rc)best={W,H,land,cols,Rc}}));
+  const fe=Rm=>place(W,H,cols,Rm,1);let Rm=0;
+  for(let r=Math.floor((pk=='A3'?400:R0*10)/5)*5;r>=15;r-=5){if(fe(r)){Rm=r;break}}
+  if(!Rm)return;
+  const Rc=Math.max(3,Math.floor(Rm/10*2)/2),layout=fe(Rc*10);
+  if(!best||Rc>best.Rc||(Rc===best.Rc&&layout.night&&!best.night))best={W,H,land,cols,Rc,night:layout.night}}));
  if(!best)best={W:pa,H:pb,land:0,cols:2,Rc:3};
  let {W,H,land,cols,Rc}=best,pl;
  while(Rc>3&&!(pl=place(W,H,cols,Rc*10,Rc/R0)))Rc-=.5;
@@ -255,10 +264,10 @@ function mk(){
  T(m,m+21,tr('pdf.solarTime'),8,G1,'start',1);
  T(m,m+16,tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),8,G1);
  P.push({k:'l',x1:W-m-50,y1:m+3,x2:W-m,y2:m+3,c:G1,w:.4});T(W-m,m+7,tr('pdf.scaleCheck'),6.5,G1,'end');
- const rowsT=(x0,y0,list)=>{const X=cup?[0,33,49,63,78]:[0,33,49,0,63];
-  TT(x0+X[0],y0,tr('table.time'),7.5,G1,'start',1);TT(x0+X[1],y0,tr('pdf.elevation'),7.5,G1,'end',1);TT(x0+X[2],y0,tr('pdf.azimuth'),7.5,G1,'end',1);if(cup)TT(x0+X[3],y0,tr('pdf.distance'),7.5,G1,'end',1);TT(x0+X[4],y0,tr('pdf.height'),7.5,G1,'end',1);
-  list.forEach((o,j)=>{const y=y0+(j+1)*rh;TT(x0+X[0],y,tf(o.t)+(o.z?' '+tr(`event.${o.tag}`):''),7.5,G2);TT(x0+X[1],y,f(o.e,0)+'º',7.5,G2,'end');TT(x0+X[2],y,f(o.A,0)+'º',7.5,G2,'end');if(cup)TT(x0+X[3],y,f(o.r*k),7.5,G2,'end');TT(x0+X[4],y,f(o.h*k)+(o.cap?'*':''),7.5,G2,'end')})};
- for(let c=0;c<pl.cols;c++)rowsT(pl.tx+c*(cw+6),pl.ty+3,E.slice(c*rc,(c+1)*rc));
+ const rowsT=(x0,y0,list)=>{const X=(cup?[0,33,49,63,78]:[0,33,49,0,63]).map(x=>x*pl.groupW/cw),tableFont=pl.cols>1?6.5:7.5;
+  TT(x0+X[0],y0,tr('table.time'),tableFont,G1,'start',1);TT(x0+X[1],y0,tr('pdf.elevation'),tableFont,G1,'end',1);TT(x0+X[2],y0,tr('pdf.azimuth'),tableFont,G1,'end',1);if(cup)TT(x0+X[3],y0,tr('pdf.distance'),tableFont,G1,'end',1);TT(x0+X[4],y0,tr('pdf.height'),tableFont,G1,'end',1);
+  list.forEach((o,j)=>{const y=y0+(j+1)*pl.rowH;TT(x0+X[0],y,tf(o.t)+(o.z?' '+tr(`event.${o.tag}`):''),tableFont,G2);TT(x0+X[1],y,f(o.e,0)+'º',tableFont,G2,'end');TT(x0+X[2],y,f(o.A,0)+'º',tableFont,G2,'end');if(cup)TT(x0+X[3],y,f(o.r*k),tableFont,G2,'end');TT(x0+X[4],y,f(o.h*k)+(o.cap?'*':''),tableFont,G2,'end')})};
+ for(let c=0;c<pl.cols;c++)rowsT(pl.tx+c*(pl.groupW+6),pl.ty+3,E.slice(c*rc,(c+1)*rc));
  const arc=[];for(let q=0;q<=len;q++){const t=(a0+q)*rad;arc.push([ox+Rm*Math.sin(t),oy-Rm*Math.cos(t)])}
  P.push({k:'p',pts:arc,c:BK,w:.4});
  CARD.forEach(([nm,a])=>{if(ia(a)){const s_=Math.sin(a*rad),c_=-Math.cos(a*rad);
@@ -276,7 +285,7 @@ function mk(){
  P.push(...LB);
  P.push({k:'c',x:ox,y:oy,r:2.5,c:BK,w:.5});P.push({k:'l',x1:ox-4,y1:oy,x2:ox+4,y2:oy,c:BK,w:.3});P.push({k:'l',x1:ox,y1:oy-4,x2:ox,y2:oy+4,c:BK,w:.3});
  T(ox+8*Math.sin(gc),oy-8*Math.cos(gc)+1.2,tr('pdf.observer'),7,BK,'middle');
- for(let c=0;c<pl.cols;c++)P.push({k:'r',x:pl.tx+c*(cw+6)-1,y:pl.ty,w:cw+2,h:pl.th,c:[255,255,255]});
+ for(let c=0;c<pl.cols;c++)P.push({k:'r',x:pl.tx+c*(pl.groupW+6)-1,y:pl.ty,w:pl.groupW+2,h:pl.th,c:[255,255,255]});
  P.push(...tableItems);
  T(m,H-7,tr('pdf.attribution'),6.5,G1);
  T(m,H-3,tr('pdf.license'),6.5,G1);
