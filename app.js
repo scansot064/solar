@@ -193,11 +193,40 @@ function lines(o,k){return [tf(o.t)].concat(o.z?[tr(`event.${o.tag}`)]:[],[f(o.h
 function lbl(o,x,y,k,v=0){const L=lines(o,k),w=Math.max(...L.map(t=>t.length))*1.5+1,h=L.length*3.3,u0=Math.sin(o.A*rad),v0=-Math.cos(o.A*rad),[ux,uy]=[[u0,v0],[-u0,-v0],[-v0,u0],[v0,-u0]][v],lx=x+ux*2.8,ly=y+uy*2.8,an=ux>.35?'start':ux<-.35?'end':'middle',bx=an=='start'?lx:an=='end'?lx-w:lx-w/2,by=uy<-.5?ly-h:uy>.5?ly:ly-h/2;return{L,an,tx:lx,ty:by+2.4,box:[bx,by,bx+w,by+h]}}
 function mk(){
  if(!E.length)return null;
- const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,hh=16,cw=78;
+ const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,cw=78;
  const an=E.map(o=>o.A).sort((x,y)=>x-y);let mi=0,G=-1;
  an.forEach((x,i)=>{const g=i<an.length-1?an[i+1]-x:an[0]+360-x;if(g>G){G=g;mi=i}});
  const full=G<70,a0=full?0:an[(mi+1)%an.length]-12,len=full?360:360-G+24,ia=a=>full||((a-a0+720)%360)<=len,gc=full?Math.PI:(an[mi]+G/2)*rad;
  const CARD=[['N',0],['E',90],['S',180],[tr('pdf.west'),270]];
+ const dateTxt=new Date($('date').value+'T12:00:00Z').toLocaleDateString(LANG,{day:'numeric',month:'long',timeZone:'UTC'});
+ const wrap=(text,chars)=>{const out=[];let line='';text.split(/\s+/).forEach(word=>{if(!line)line=word;else if(`${line} ${word}`.length>chars){out.push(line);line=word}else line+=' '+word});if(line)out.push(line);return out};
+ const headerFor=(W,H,bb,tableBoxes,Rm)=>{
+  const radius=f(Rm/10),scaling=Rm/10<R0?tr('pdf.scaledDown',{radius:f(R0)}):Rm/10>R0?tr('pdf.scaledUp',{radius:f(R0)}):'';
+  const texts=[
+   {text:tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),pt:10.5,bold:1,step:3.7},
+   {text:tr('pdf.subtitle',{declination:f(S.dec),radius,scaling,model:tr(cup?'pdf.modelDome':'pdf.modelPole'),paper:pk}),pt:8,step:3.2},
+   {text:tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),pt:8,step:3.2},
+   {text:tr('pdf.solarTime'),pt:8,bold:1,step:3.2}
+  ];
+  const obstacles=[bb,...tableBoxes.map(b=>[b[0]-2,b[1]-2,b[2]+2,b[3]+2])];
+  const xs=[m,W-m],ys=[m,H-m-14];
+  obstacles.forEach(b=>{xs.push(Math.max(m,Math.min(W-m,b[0])),Math.max(m,Math.min(W-m,b[2])));ys.push(Math.max(m,Math.min(H-m-14,b[1])),Math.max(m,Math.min(H-m-14,b[3])))});
+  const candidates=[];
+  for(const x0 of xs)for(const x1 of xs)if(x1-x0>=52)for(const y0 of ys)for(const y1 of ys)if(y1-y0>=25&&
+   !obstacles.some(b=>x0<b[2]&&x1>b[0]&&y0<b[3]&&y1>b[1]))candidates.push({x:x0,y:y0,w:x1-x0,h:y1-y0});
+  candidates.sort((a,b)=>a.x-b.x||b.h*a.w-a.h*b.w);
+  for(const box of candidates){
+   const maxChars=pt=>Math.max(14,Math.floor(box.w/(pt*.18)));
+   const lines=texts.map(item=>({...item,lines:wrap(item.text,maxChars(item.pt))}));
+   lines[0].lines.slice(0,-1).forEach((line,i)=>{if(line.endsWith(' -'))lines[0].lines[i]=line.slice(0,-2)});
+   const height=lines.reduce((sum,item)=>sum+item.lines.length*item.step+2,0)+10;
+   if(height>box.h)continue;
+   const items=[];let y=box.y+3;
+   lines.forEach(item=>{item.lines.forEach((line,i)=>{items.push({x:box.x+2,y:y+i*item.step,s:line,pt:item.pt,b:item.bold||0})});y+=item.lines.length*item.step+2});
+   return{items,scale:{x1:box.x+2,y1:y,x2:box.x+52,y2:y,c:[140,140,140],label:tr('pdf.scaleCheck'),labelY:y+4,box}};
+  }
+  return null
+ };
  // Evita que la tabla cubra el arco, las marcas, los rótulos o el observador.
  const occ=(Rm,k)=>{const pts=[],bx=[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   const ad=(x,y)=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)};
@@ -210,7 +239,7 @@ function mk(){
   const observerX=8*Math.sin(gc),observerY=-8*Math.cos(gc)+1.2;
   ab([observerX-12,observerY-3,observerX+12,observerY+3]);
   placed.push([-5,-5,5,5]);
-  CARD.forEach(([nm,a])=>{if(ia(a)&&a!==0){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad),box=[x-3.5,y-3.5,x+3.5,y+3.5];ab(box);placed.push(box)}});
+  CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad)-(a===0?15:0),box=[x-3.5,y-3.5,x+3.5,y+3.5];if(a===0)bx.push(box);else ab(box);placed.push(box)}});
   E.forEach((o,i)=>{const [x,y]=positions[i];let box;
    for(let v=0;v<4;v++){const l=lbl(o,x,y,k,v);box=[l.box[0],l.box[1],l.box[2],l.box[3]];if(!placed.some(other=>overlaps(other,box)))break;if(v===3){const l0=lbl(o,x,y,k,0);box=[l0.box[0],l0.box[1],l0.box[2],l0.box[3]]}}
    placed.push(box);ab(box)});
@@ -218,12 +247,15 @@ function mk(){
  const hit=(r,O,ox,oy)=>{for(const q of O.pts){const x=q[0]+ox,y=q[1]+oy;if(x>r[0]&&x<r[2]&&y>r[1]&&y<r[3])return 1}
   for(const b of O.bx)if(b[0]+ox<r[2]&&b[2]+ox>r[0]&&b[1]+oy<r[3]&&b[3]+oy>r[1])return 1;return 0};
  // Coloca dibujo y tabla (en una esquina libre) para un radio dado
- const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m+hh,tableTop=m+26,ah=H-m-ay;
+ const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m,ah=H-m-ay;
   if(bw>aw||bh>ah)return null;
-  const groupW=cols>1?64:cw,rowH=cols>1?3:4.2,rc=Math.ceil(n/cols),tw=cols*groupW+(cols-1)*6,th=(rc+1)*rowH;
+  const groupW=cols>1?64:cw,groupGap=cols>1?4:6,rowH=cols>1?3:4.2,rc=Math.ceil(n/cols),tw=cols*groupW+(cols-1)*groupGap,th=(rc+1)*rowH;
  const offsets=[];
- for(const fy of[1,.5,0])for(const fx of[.5,0,1])offsets.push([m+fx*(aw-bw)-bb[0],ay+fy*(ah-bh)-bb[1]]);
+ for(const fy of[0,.5,1])for(const fx of[0,.25,.5,.75,1])offsets.push([m+fx*(aw-bw)-bb[0],ay+fy*(ah-bh)-bb[1]]);
+ let bestLayout=null;
  for(const [ox,oy] of offsets){
+  const north=ia(0)?[ox-3.5,oy-Rm-6-15-3.5,ox+3.5,oy-Rm-6-15+3.5]:null;
+  if(north&&(north[0]<m||north[1]<0||north[2]>W-m||north[3]>H-m))continue;
   const slots=[[W-m-tw,oy+bb[1]+9],[m,oy+bb[1]+9],[W-m-tw,H-m-th],[m,H-m-th]];
  const nightSlots=[];
  if(!full)for(const distance of[.47,.45,.43,.5])for(const cross of[0,-.08,.08]){
@@ -236,11 +268,17 @@ function mk(){
   const ys=[ay,(ay+H-m-th)/2,H-m-th,oy+bb[1],oy+(bb[1]+bb[3]-th)/2,oy+bb[3]-th];
   xs.forEach(tx=>ys.forEach(ty=>slots.push([tx,ty])));
   for(const [slotIndex,[tx,ty]] of slots.entries()){
-   if(tx<m||tx+tw>W-m||ty<tableTop||ty+th>H-m)continue;
-   if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy))return{ox,oy,tx,ty,cols,rc,tw,th,groupW,rowH,night:slotIndex<nightSlots.length}
+   if(tx<m||tx+tw>W-m||ty<ay||ty+th>H-m)continue;
+   if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy)){
+    const tableBoxes=Array.from({length:cols},(_,c)=>[tx+c*(groupW+groupGap)-1,ty,tx+c*(groupW+groupGap)+groupW+1,ty+th]),header=headerFor(W,H,[bb[0]+ox,bb[1]+oy,bb[2]+ox,bb[3]+oy],north?[...tableBoxes,north]:tableBoxes,Rm);
+    if(header){
+     const candidate={ox,oy,tx,ty,cols,rc,tw,th,groupW,groupGap,rowH,night:slotIndex<nightSlots.length,header};
+     if(!bestLayout||header.items[0].x<bestLayout.header.items[0].x||(header.items[0].x===bestLayout.header.items[0].x&&candidate.night&&!bestLayout.night))bestLayout=candidate
+    }
+   }
   }
  }
- return null};
+ return bestLayout};
  let best=null;
  [0,1].forEach(land=>[1,2,3].forEach(cols=>{const W=land?pb:pa,H=land?pa:pb;
   const fe=Rm=>place(W,H,cols,Rm,1);let Rm=0;
@@ -253,32 +291,26 @@ function mk(){
  while(Rc>3&&!(pl=place(W,H,cols,Rc*10,Rc/R0)))Rc-=.5;
  if(!pl)pl=place(W,H,cols,Rc*10,Rc/R0,1);
  if(!pl){Rc=3;pl=place(W,H,cols,30,3/R0,1)}
+ if(!pl)return null;
  const k=Rc/R0,Rm=Rc*10,{ox,oy,rc}=pl;
  const P=[],tableItems=[],BK=[0,0,0],G1=[140,140,140],G2=[165,165,165];
  const T=(x,y,s,pt,c,al='start',b=0)=>P.push({k:'t',x,y,s,pt,c,an:al,b});
  const TT=(x,y,s,pt,c,al='start',b=0)=>tableItems.push({k:'t',x,y,s,pt,c,an:al,b});
- const dateTxt=new Date($('date').value+'T12:00:00Z').toLocaleDateString(LANG,{day:'numeric',month:'long',timeZone:'UTC'});
- const scaling=Rc<R0?tr('pdf.scaledDown',{radius:f(R0)}):Rc>R0?tr('pdf.scaledUp',{radius:f(R0)}):'';
- const title=tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),titleLines=[];
- title.split(/\s+/).forEach(word=>{const last=titleLines.length-1;if(last<0||`${titleLines[last]} ${word}`.length>35)titleLines.push(word);else titleLines[last]+=' '+word});
- titleLines.slice(0,-1).forEach((line,i)=>{if(line.endsWith(' -'))titleLines[i]=line.slice(0,-2)});
- titleLines.forEach((line,i)=>T(m,m+4+i*3.7,line,10.5,G1,'start',1));
- T(m,m+13,tr('pdf.subtitle',{declination:f(S.dec),radius:f(Rc),scaling,model:tr(cup?'pdf.modelDome':'pdf.modelPole'),paper:pk}),8,G1);
- T(m,m+21,tr('pdf.solarTime'),8,G1,'start',1);
- T(m,m+16,tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),8,G1);
- P.push({k:'l',x1:W-m-50,y1:m+3,x2:W-m,y2:m+3,c:G1,w:.4});T(W-m,m+7,tr('pdf.scaleCheck'),6.5,G1,'end');
+ pl.header.items.forEach(item=>T(item.x,item.y,item.s,item.pt,G1,'start',item.b));
+ P.push({k:'l',x1:pl.header.scale.x1,y1:pl.header.scale.y1,x2:pl.header.scale.x2,y2:pl.header.scale.y2,c:G1,w:.4});
+ T(pl.header.scale.x2,pl.header.scale.labelY,pl.header.scale.label,6.5,G1,'end');
  const rowsT=(x0,y0,list)=>{const X=(cup?[0,33,49,63,78]:[0,33,49,0,63]).map(x=>x*pl.groupW/cw),tableFont=pl.cols>1?6.5:7.5;
   TT(x0+X[0],y0,tr('table.time'),tableFont,G1,'start',1);TT(x0+X[1],y0,tr('pdf.elevation'),tableFont,G1,'end',1);TT(x0+X[2],y0,tr('pdf.azimuth'),tableFont,G1,'end',1);if(cup)TT(x0+X[3],y0,tr('pdf.distance'),tableFont,G1,'end',1);TT(x0+X[4],y0,tr('pdf.height'),tableFont,G1,'end',1);
   list.forEach((o,j)=>{const y=y0+(j+1)*pl.rowH;TT(x0+X[0],y,tf(o.t)+(o.z?' '+tr(`event.${o.tag}`):''),tableFont,G2);TT(x0+X[1],y,f(o.e,0)+'º',tableFont,G2,'end');TT(x0+X[2],y,f(o.A,0)+'º',tableFont,G2,'end');if(cup)TT(x0+X[3],y,f(o.r*k),tableFont,G2,'end');TT(x0+X[4],y,f(o.h*k)+(o.cap?'*':''),tableFont,G2,'end')})};
- for(let c=0;c<pl.cols;c++)rowsT(pl.tx+c*(pl.groupW+6),pl.ty+3,E.slice(c*rc,(c+1)*rc));
+ for(let c=0;c<pl.cols;c++)rowsT(pl.tx+c*(pl.groupW+pl.groupGap),pl.ty+3,E.slice(c*rc,(c+1)*rc));
  const arc=[];for(let q=0;q<=len;q++){const t=(a0+q)*rad;arc.push([ox+Rm*Math.sin(t),oy-Rm*Math.cos(t)])}
  P.push({k:'p',pts:arc,c:BK,w:.4});
  CARD.forEach(([nm,a])=>{if(ia(a)){const s_=Math.sin(a*rad),c_=-Math.cos(a*rad);
-  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3-(a===0?5:0),nm,10,BK,'middle',1)}});
+  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3-(a===0?15:0),nm,10,BK,'middle',1)}});
  const hit2=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
  const pos=E.map(o=>{const rr=o.r*k*10;return[ox+rr*Math.sin(o.A*rad),oy-rr*Math.cos(o.A*rad)]});
  const placed=pos.map(q=>[q[0]-1.8,q[1]-1.8,q[0]+1.8,q[1]+1.8]);placed.push([ox-5,oy-5,ox+5,oy+5]);
- CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad)-(a===0?5:0);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
+ CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad)-(a===0?15:0);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
  const LB=[];
  E.forEach((o,i)=>{const [x,y]=pos[i];
   P.push({k:'l',x1:ox,y1:oy,x2:x,y2:y,c:BK,w:.12});P.push({k:'c',x,y,r:1.1,c:BK,fill:1});
@@ -288,7 +320,7 @@ function mk(){
  P.push(...LB);
  P.push({k:'c',x:ox,y:oy,r:2.5,c:BK,w:.5});P.push({k:'l',x1:ox-4,y1:oy,x2:ox+4,y2:oy,c:BK,w:.3});P.push({k:'l',x1:ox,y1:oy-4,x2:ox,y2:oy+4,c:BK,w:.3});
  T(ox+8*Math.sin(gc),oy-8*Math.cos(gc)+1.2,tr('pdf.observer'),7,BK,'middle');
- for(let c=0;c<pl.cols;c++)P.push({k:'r',x:pl.tx+c*(pl.groupW+6)-1,y:pl.ty,w:pl.groupW+2,h:pl.th,c:[255,255,255]});
+ for(let c=0;c<pl.cols;c++)P.push({k:'r',x:pl.tx+c*(pl.groupW+pl.groupGap)-1,y:pl.ty,w:pl.groupW+2,h:pl.th,c:[255,255,255]});
  P.push(...tableItems);
  T(m,H-7,tr('pdf.attribution'),6.5,G1);
  T(m,H-3,tr('pdf.license'),6.5,G1);
