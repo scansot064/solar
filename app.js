@@ -198,15 +198,22 @@ function mk(){
  an.forEach((x,i)=>{const g=i<an.length-1?an[i+1]-x:an[0]+360-x;if(g>G){G=g;mi=i}});
  const full=G<70,a0=full?0:an[(mi+1)%an.length]-12,len=full?360:360-G+24,ia=a=>full||((a-a0+720)%360)<=len,gc=full?Math.PI:(an[mi]+G/2)*rad;
  const CARD=[['N',0],['E',90],['S',180],[tr('pdf.west'),270]];
- // Ocupación del dibujo (relativa al observador): puntos de muestra, cajas y caja envolvente
+ // Evita que la tabla cubra el arco, las marcas, los rótulos o el observador.
  const occ=(Rm,k)=>{const pts=[],bx=[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   const ad=(x,y)=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)};
   const ab=b=>{bx.push(b);ad(b[0],b[1]);ad(b[2],b[3])};
   for(let q=0;q<=len;q+=2){const t=(a0+q)*rad,x=Rm*Math.sin(t),y=-Rm*Math.cos(t);pts.push([x,y]);ad(x,y)}
-  E.forEach(o=>{const rr=o.r/R0*Rm,sx=Math.sin(o.A*rad),sy=-Math.cos(o.A*rad),x=rr*sx,y=rr*sy;
-   for(let d=0;d<=rr;d+=4)pts.push([d*sx,d*sy]);ad(x,y);ab(lbl(o,x,y,k).box)});
+  const positions=E.map(o=>[o.r/R0*Rm*Math.sin(o.A*rad),-o.r/R0*Rm*Math.cos(o.A*rad)]);
+  const placed=positions.map(([x,y])=>[x-2.2,y-2.2,x+2.2,y+2.2]),overlaps=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
+  positions.forEach(([x,y])=>{ad(x,y);ab([x-2.2,y-2.2,x+2.2,y+2.2])});
   ab([-5,-5,5,5]);ab([8*Math.sin(gc)-8,-8*Math.cos(gc)-4,8*Math.sin(gc)+8,-8*Math.cos(gc)+2]);
-  CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad);ab([x-3.5,y-3.5,x+3.5,y+3.5])}});
+  const observerX=8*Math.sin(gc),observerY=-8*Math.cos(gc)+1.2;
+  ab([observerX-12,observerY-3,observerX+12,observerY+3]);
+  placed.push([-5,-5,5,5]);
+  CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad),box=[x-3.5,y-3.5,x+3.5,y+3.5];ab(box);placed.push(box)}});
+  E.forEach((o,i)=>{const [x,y]=positions[i];let box;
+   for(let v=0;v<4;v++){const l=lbl(o,x,y,k,v);box=[l.box[0],l.box[1],l.box[2],l.box[3]];if(!placed.some(other=>overlaps(other,box)))break;if(v===3){const l0=lbl(o,x,y,k,0);box=[l0.box[0],l0.box[1],l0.box[2],l0.box[3]]}}
+   placed.push(box);ab(box)});
   return{pts,bx,bb:[x0-3,y0-3,x1+3,y1+3]}};
  const hit=(r,O,ox,oy)=>{for(const q of O.pts){const x=q[0]+ox,y=q[1]+oy;if(x>r[0]&&x<r[2]&&y>r[1]&&y<r[3])return 1}
   for(const b of O.bx)if(b[0]+ox<r[2]&&b[2]+ox>r[0]&&b[1]+oy<r[3]&&b[3]+oy>r[1])return 1;return 0};
@@ -214,10 +221,19 @@ function mk(){
  const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m+hh,ah=H-m-ay;
   if(bw>aw||bh>ah)return null;
   const rc=Math.ceil(n/cols),tw=cols*cw+(cols-1)*6,th=(rc+1)*rh;
-  for(const fy of[1,.5,0])for(const fx of[.5,0,1]){const ox=m+fx*(aw-bw)-bb[0],oy=ay+fy*(ah-bh)-bb[1];
-   for(const [rt,bt] of[[1,0],[0,0],[1,1],[0,1]]){const tx=rt?W-m-tw:m,ty=bt?H-m-th:((rt&&tx>=m+150)?m+9:ay);
-    if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy))return{ox,oy,tx,ty,cols,rc}}}
-  return null};
+ const offsets=[];
+ for(const fy of[1,.5,0])for(const fx of[.5,0,1])offsets.push([m+fx*(aw-bw)-bb[0],ay+fy*(ah-bh)-bb[1]]);
+ for(const [ox,oy] of offsets){
+  const slots=[[W-m-tw,oy+bb[1]+9],[m,oy+bb[1]+9],[W-m-tw,H-m-th],[m,H-m-th]];
+  const xs=[m,W/2-tw/2,W-m-tw,ox+bb[0],ox+(bb[0]+bb[2]-tw)/2,ox+bb[2]-tw];
+  const ys=[ay,(ay+H-m-th)/2,H-m-th,oy+bb[1],oy+(bb[1]+bb[3]-th)/2,oy+bb[3]-th];
+  xs.forEach(tx=>ys.forEach(ty=>slots.push([tx,ty])));
+  for(const [tx,ty] of slots){
+   if(tx<m||tx+tw>W-m||ty<ay||ty+th>H-m)continue;
+   if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy))return{ox,oy,tx,ty,cols,rc,tw,th}
+  }
+ }
+ return null};
  let best=null;
  [0,1].forEach(land=>[1,2,3].forEach(cols=>{const W=land?pb:pa,H=land?pa:pb;
   const fe=Rm=>place(W,H,cols,Rm,1);let lo=15,hi=pk=='A3'?400:R0*10,Rm;
@@ -229,8 +245,9 @@ function mk(){
  if(!pl)pl=place(W,H,cols,Rc*10,Rc/R0,1);
  if(!pl){Rc=3;pl=place(W,H,cols,30,3/R0,1)}
  const k=Rc/R0,Rm=Rc*10,{ox,oy,rc}=pl;
- const P=[],BK=[0,0,0],G1=[140,140,140],G2=[165,165,165];
+ const P=[],tableItems=[],BK=[0,0,0],G1=[140,140,140],G2=[165,165,165];
  const T=(x,y,s,pt,c,al='start',b=0)=>P.push({k:'t',x,y,s,pt,c,an:al,b});
+ const TT=(x,y,s,pt,c,al='start',b=0)=>tableItems.push({k:'t',x,y,s,pt,c,an:al,b});
  const dateTxt=new Date($('date').value+'T12:00:00Z').toLocaleDateString(LANG,{day:'numeric',month:'long',timeZone:'UTC'});
  const scaling=Rc<R0?tr('pdf.scaledDown',{radius:f(R0)}):Rc>R0?tr('pdf.scaledUp',{radius:f(R0)}):'';
  T(m,m+5,tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),13,G1,'start',1);
@@ -239,8 +256,8 @@ function mk(){
  T(m,m+16,tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),8,G1);
  P.push({k:'l',x1:W-m-50,y1:m+3,x2:W-m,y2:m+3,c:G1,w:.4});T(W-m,m+7,tr('pdf.scaleCheck'),6.5,G1,'end');
  const rowsT=(x0,y0,list)=>{const X=cup?[0,33,49,63,78]:[0,33,49,0,63];
-  T(x0+X[0],y0,tr('table.time'),7.5,G1,'start',1);T(x0+X[1],y0,tr('pdf.elevation'),7.5,G1,'end',1);T(x0+X[2],y0,tr('pdf.azimuth'),7.5,G1,'end',1);if(cup)T(x0+X[3],y0,tr('pdf.distance'),7.5,G1,'end',1);T(x0+X[4],y0,tr('pdf.height'),7.5,G1,'end',1);
-  list.forEach((o,j)=>{const y=y0+(j+1)*rh;T(x0+X[0],y,tf(o.t)+(o.z?' '+tr(`event.${o.tag}`):''),7.5,G2);T(x0+X[1],y,f(o.e,0)+'º',7.5,G2,'end');T(x0+X[2],y,f(o.A,0)+'º',7.5,G2,'end');if(cup)T(x0+X[3],y,f(o.r*k),7.5,G2,'end');T(x0+X[4],y,f(o.h*k)+(o.cap?'*':''),7.5,G2,'end')})};
+  TT(x0+X[0],y0,tr('table.time'),7.5,G1,'start',1);TT(x0+X[1],y0,tr('pdf.elevation'),7.5,G1,'end',1);TT(x0+X[2],y0,tr('pdf.azimuth'),7.5,G1,'end',1);if(cup)TT(x0+X[3],y0,tr('pdf.distance'),7.5,G1,'end',1);TT(x0+X[4],y0,tr('pdf.height'),7.5,G1,'end',1);
+  list.forEach((o,j)=>{const y=y0+(j+1)*rh;TT(x0+X[0],y,tf(o.t)+(o.z?' '+tr(`event.${o.tag}`):''),7.5,G2);TT(x0+X[1],y,f(o.e,0)+'º',7.5,G2,'end');TT(x0+X[2],y,f(o.A,0)+'º',7.5,G2,'end');if(cup)TT(x0+X[3],y,f(o.r*k),7.5,G2,'end');TT(x0+X[4],y,f(o.h*k)+(o.cap?'*':''),7.5,G2,'end')})};
  for(let c=0;c<pl.cols;c++)rowsT(pl.tx+c*(cw+6),pl.ty+3,E.slice(c*rc,(c+1)*rc));
  const arc=[];for(let q=0;q<=len;q++){const t=(a0+q)*rad;arc.push([ox+Rm*Math.sin(t),oy-Rm*Math.cos(t)])}
  P.push({k:'p',pts:arc,c:BK,w:.4});
@@ -259,6 +276,8 @@ function mk(){
  P.push(...LB);
  P.push({k:'c',x:ox,y:oy,r:2.5,c:BK,w:.5});P.push({k:'l',x1:ox-4,y1:oy,x2:ox+4,y2:oy,c:BK,w:.3});P.push({k:'l',x1:ox,y1:oy-4,x2:ox,y2:oy+4,c:BK,w:.3});
  T(ox+8*Math.sin(gc),oy-8*Math.cos(gc)+1.2,tr('pdf.observer'),7,BK,'middle');
+ for(let c=0;c<pl.cols;c++)P.push({k:'r',x:pl.tx+c*(cw+6)-1,y:pl.ty,w:cw+2,h:pl.th,c:[255,255,255]});
+ P.push(...tableItems);
  T(m,H-7,tr('pdf.attribution'),6.5,G1);
  T(m,H-3,tr('pdf.license'),6.5,G1);
  return{P,W,H,land,Rc,k,R0,pk}}
