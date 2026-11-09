@@ -239,7 +239,7 @@ function mk(){
   const observerX=8*Math.sin(gc),observerY=-8*Math.cos(gc)+1.2;
   ab([observerX-12,observerY-3,observerX+12,observerY+3]);
   placed.push([-5,-5,5,5]);
-  CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad)-(a===0?15:0),box=[x-3.5,y-3.5,x+3.5,y+3.5];if(a===0)bx.push(box);else ab(box);placed.push(box)}});
+  CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad),box=[x-3.5,y-3.5,x+3.5,y+3.5];ab(box);placed.push(box)}});
   E.forEach((o,i)=>{const [x,y]=positions[i];let box;
    for(let v=0;v<4;v++){const l=lbl(o,x,y,k,v);box=[l.box[0],l.box[1],l.box[2],l.box[3]];if(!placed.some(other=>overlaps(other,box)))break;if(v===3){const l0=lbl(o,x,y,k,0);box=[l0.box[0],l0.box[1],l0.box[2],l0.box[3]]}}
    placed.push(box);ab(box)});
@@ -254,7 +254,7 @@ function mk(){
  for(const fy of[0,.5,1])for(const fx of[0,.25,.5,.75,1])offsets.push([m+fx*(aw-bw)-bb[0],ay+fy*(ah-bh)-bb[1]]);
  let bestLayout=null;
  for(const [ox,oy] of offsets){
-  const north=ia(0)?[ox-3.5,oy-Rm-6-15-3.5,ox+3.5,oy-Rm-6-15+3.5]:null;
+  const north=ia(0)?[ox-3.5,oy-Rm-6-3.5,ox+3.5,oy-Rm-6+3.5]:null;
   if(north&&(north[0]<m||north[1]<0||north[2]>W-m||north[3]>H-m))continue;
   const slots=[[W-m-tw,oy+bb[1]+9],[m,oy+bb[1]+9],[W-m-tw,H-m-th],[m,H-m-th]];
  const nightSlots=[];
@@ -306,11 +306,11 @@ function mk(){
  const arc=[];for(let q=0;q<=len;q++){const t=(a0+q)*rad;arc.push([ox+Rm*Math.sin(t),oy-Rm*Math.cos(t)])}
  P.push({k:'p',pts:arc,c:BK,w:.4});
  CARD.forEach(([nm,a])=>{if(ia(a)){const s_=Math.sin(a*rad),c_=-Math.cos(a*rad);
-  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3-(a===0?15:0),nm,10,BK,'middle',1)}});
+  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3,nm,10,BK,'middle',1)}});
  const hit2=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
  const pos=E.map(o=>{const rr=o.r*k*10;return[ox+rr*Math.sin(o.A*rad),oy-rr*Math.cos(o.A*rad)]});
  const placed=pos.map(q=>[q[0]-1.8,q[1]-1.8,q[0]+1.8,q[1]+1.8]);placed.push([ox-5,oy-5,ox+5,oy+5]);
- CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad)-(a===0?15:0);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
+ CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
  const LB=[];
  E.forEach((o,i)=>{const [x,y]=pos[i];
   P.push({k:'l',x1:ox,y1:oy,x2:x,y2:y,c:BK,w:.12});P.push({k:'c',x,y,r:1.1,c:BK,fill:1});
