@@ -194,14 +194,14 @@ function lines(o,k){return [tf(o.t)].concat(o.z?[tr(`event.${o.tag}`)]:[],[f(o.h
 function lbl(o,x,y,k,v=0){const L=lines(o,k),w=Math.max(...L.map(t=>t.length))*1.5+1,h=L.length*3.3,u0=Math.sin(o.A*rad),v0=-Math.cos(o.A*rad),[ux,uy]=[[u0,v0],[-u0,-v0],[-v0,u0],[v0,-u0]][v],lx=x+ux*2.8,ly=y+uy*2.8,an=ux>.35?'start':ux<-.35?'end':'middle',bx=an=='start'?lx:an=='end'?lx-w:lx-w/2,by=uy<-.5?ly-h:uy>.5?ly:ly-h/2;return{L,an,tx:lx,ty:by+2.4,box:[bx,by,bx+w,by+h]}}
 function mk(){
  if(!E.length)return null;
- const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',n=E.length,m=10,cw=78;
+ const pk=$('paper').value,[pa,pb]=PAPEL[pk],R0=S.R,cup=S.mode=='cupula',cropCircle=cup&&$('crop-circle').checked,n=E.length,m=10,cw=78;
  const an=E.map(o=>o.A).sort((x,y)=>x-y);let mi=0,G=-1;
  an.forEach((x,i)=>{const g=i<an.length-1?an[i+1]-x:an[0]+360-x;if(g>G){G=g;mi=i}});
  const full=G<70,a0=full?0:an[(mi+1)%an.length]-12,len=full?360:360-G+24,ia=a=>full||((a-a0+720)%360)<=len,gc=full?Math.PI:(an[mi]+G/2)*rad;
  const CARD=[['N',0],['E',90],['S',180],[tr('pdf.west'),270]];
  const dateTxt=new Date($('date').value+'T12:00:00Z').toLocaleDateString(LANG,{day:'numeric',month:'long',timeZone:'UTC'});
  const wrap=(text,chars)=>{const out=[];let line='';text.split(/\s+/).forEach(word=>{if(!line)line=word;else if(`${line} ${word}`.length>chars){out.push(line);line=word}else line+=' '+word});if(line)out.push(line);return out};
- const headerFor=(W,H,bb,tableBoxes,Rm)=>{
+ const headerFor=(W,H,diagramBoxes,tableBoxes,Rm)=>{
   const radius=f(Rm/10),scaling=Rm/10<R0?tr('pdf.scaledDown',{radius:f(R0)}):Rm/10>R0?tr('pdf.scaledUp',{radius:f(R0)}):'';
   const texts=[
    {text:tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),pt:10.5,bold:1,step:3.7},
@@ -209,7 +209,7 @@ function mk(){
    {text:tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),pt:8,step:3.2},
    {text:tr('pdf.solarTime'),pt:8,bold:1,step:3.2}
   ];
-  const obstacles=[bb,...tableBoxes.map(b=>[b[0]-2,b[1]-2,b[2]+2,b[3]+2])];
+  const obstacles=[...diagramBoxes,...tableBoxes.map(b=>[b[0]-2,b[1]-2,b[2]+2,b[3]+2])];
   const xs=[m,W-m],ys=[m,H-m-14];
   obstacles.forEach(b=>{xs.push(Math.max(m,Math.min(W-m,b[0])),Math.max(m,Math.min(W-m,b[2])));ys.push(Math.max(m,Math.min(H-m-14,b[1])),Math.max(m,Math.min(H-m-14,b[3])))});
   const candidates=[];
@@ -217,7 +217,7 @@ function mk(){
    !obstacles.some(b=>x0<b[2]&&x1>b[0]&&y0<b[3]&&y1>b[1]))candidates.push({x:x0,y:y0,w:x1-x0,h:y1-y0});
   candidates.sort((a,b)=>a.x-b.x||b.h*a.w-a.h*b.w);
   for(const box of candidates){
-   const maxChars=pt=>Math.max(14,Math.floor(box.w/(pt*.18)));
+   const maxChars=pt=>Math.max(cropCircle?8:14,Math.floor(box.w/(pt*.18)));
    const lines=texts.map(item=>({...item,lines:wrap(item.text,maxChars(item.pt))}));
    lines[0].lines.slice(0,-1).forEach((line,i)=>{if(line.endsWith(' -'))lines[0].lines[i]=line.slice(0,-2)});
    const height=lines.reduce((sum,item)=>sum+item.lines.length*item.step+2,0)+10;
@@ -229,34 +229,37 @@ function mk(){
   return null
  };
  // Evita que la tabla cubra el arco, las marcas, los rótulos o el observador.
- const occ=(Rm,k)=>{const pts=[],bx=[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+ const occ=(Rm,k)=>{const pts=[],bx=[];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,px0=1e9,py0=1e9,px1=-1e9,py1=-1e9;
   const ad=(x,y)=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)};
   const ab=b=>{bx.push(b);ad(b[0],b[1]);ad(b[2],b[3])};
+  const ap=b=>{px0=Math.min(px0,b[0]);py0=Math.min(py0,b[1]);px1=Math.max(px1,b[2]);py1=Math.max(py1,b[3])};
   for(let q=0;q<=len;q+=2){const t=(a0+q)*rad,x=Rm*Math.sin(t),y=-Rm*Math.cos(t);pts.push([x,y]);ad(x,y)}
   const positions=E.map(o=>[o.r/R0*Rm*Math.sin(o.A*rad),-o.r/R0*Rm*Math.cos(o.A*rad)]);
   const placed=positions.map(([x,y])=>[x-2.2,y-2.2,x+2.2,y+2.2]),overlaps=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
-  positions.forEach(([x,y])=>{ad(x,y);ab([x-2.2,y-2.2,x+2.2,y+2.2])});
-  ab([-5,-5,5,5]);ab([8*Math.sin(gc)-8,-8*Math.cos(gc)-4,8*Math.sin(gc)+8,-8*Math.cos(gc)+2]);
+  positions.forEach(([x,y])=>{ad(x,y);const marker=[x-2.2,y-2.2,x+2.2,y+2.2];ab(marker);ap(marker)});
+  ab([-5,-5,5,5]);ap([-5,-5,5,5]);const observerBox=[8*Math.sin(gc)-8,-8*Math.cos(gc)-4,8*Math.sin(gc)+8,-8*Math.cos(gc)+2];ab(observerBox);ap(observerBox);
   const observerX=8*Math.sin(gc),observerY=-8*Math.cos(gc)+1.2;
-  ab([observerX-12,observerY-3,observerX+12,observerY+3]);
+  const observerLabel=[observerX-12,observerY-3,observerX+12,observerY+3];ab(observerLabel);ap(observerLabel);
   placed.push([-5,-5,5,5]);
   CARD.forEach(([nm,a])=>{if(ia(a)){const x=(Rm+6)*Math.sin(a*rad),y=-(Rm+6)*Math.cos(a*rad),box=[x-3.5,y-3.5,x+3.5,y+3.5];ab(box);placed.push(box)}});
   E.forEach((o,i)=>{const [x,y]=positions[i];let box;
    for(let v=0;v<4;v++){const l=lbl(o,x,y,k,v);box=[l.box[0],l.box[1],l.box[2],l.box[3]];if(!placed.some(other=>overlaps(other,box)))break;if(v===3){const l0=lbl(o,x,y,k,0);box=[l0.box[0],l0.box[1],l0.box[2],l0.box[3]]}}
-   placed.push(box);ab(box)});
-  return{pts,bx,bb:[x0-3,y0-3,x1+3,y1+3]}};
+   placed.push(box);ab(box);ap(box)});
+  return{pts,bx,bb:[x0-3,y0-3,x1+3,y1+3],pointBB:[px0-3,py0-3,px1+3,py1+3]}};
  const hit=(r,O,ox,oy)=>{for(const q of O.pts){const x=q[0]+ox,y=q[1]+oy;if(x>r[0]&&x<r[2]&&y>r[1]&&y<r[3])return 1}
   for(const b of O.bx)if(b[0]+ox<r[2]&&b[2]+ox>r[0]&&b[1]+oy<r[3]&&b[3]+oy>r[1])return 1;return 0};
  // Coloca dibujo y tabla (en una esquina libre) para un radio dado
- const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,bw=bb[2]-bb[0],bh=bb[3]-bb[1],aw=W-2*m,ay=m,ah=H-m-ay;
-  if(bw>aw||bh>ah)return null;
+ const place=(W,H,cols,Rm,k,force)=>{const O=occ(Rm,k),bb=O.bb,placementBounds=cropCircle?O.pointBB:bb,bw=placementBounds[2]-placementBounds[0],bh=placementBounds[3]-placementBounds[1],aw=W-2*m,ay=m,contentBottom=H-m-(cropCircle?14:0),ah=contentBottom-ay;
+  if((!cropCircle&&(bb[2]-bb[0]>aw||bb[3]-bb[1]>H-m-ay))||bw>aw||bh>ah)return null;
   const groupW=cols>1?64:cw,groupGap=cols>1?4:6,rowH=cols>1?3:4.2,rc=Math.ceil(n/cols),tw=cols*groupW+(cols-1)*groupGap,th=(rc+1)*rowH;
  const offsets=[];
- for(const fy of[0,.5,1])for(const fx of[0,.25,.5,.75,1])offsets.push([m+fx*(aw-bw)-bb[0],ay+fy*(ah-bh)-bb[1]]);
+ for(const fy of[0,.5,1])for(const fx of[0,.25,.5,.75,1])offsets.push([m+fx*(aw-bw)-placementBounds[0],ay+fy*(ah-bh)-placementBounds[1]]);
  let bestLayout=null;
  for(const [ox,oy] of offsets){
-  const north=ia(0)?[ox-3.5,oy-Rm-6-3.5,ox+3.5,oy-Rm-6+3.5]:null;
-  if(north&&(north[0]<m||north[1]<0||north[2]>W-m||north[3]>H-m))continue;
+  const northBox=ia(0)?[ox-3.5,oy-Rm-6-3.5,ox+3.5,oy-Rm-6+3.5]:null;
+  const northVisible=northBox&&northBox[0]>=m&&northBox[1]>=(cropCircle?m:0)&&northBox[2]<=W-m&&northBox[3]<=(cropCircle?contentBottom:H-m);
+  const north=northVisible?northBox:null;
+  if(!cropCircle&&northBox&&!northVisible)continue;
   const slots=[[W-m-tw,oy+bb[1]+9],[m,oy+bb[1]+9],[W-m-tw,H-m-th],[m,H-m-th]];
  const nightSlots=[];
  if(!full)for(const distance of[.47,.45,.43,.5])for(const cross of[0,-.08,.08]){
@@ -269,9 +272,9 @@ function mk(){
   const ys=[ay,(ay+H-m-th)/2,H-m-th,oy+bb[1],oy+(bb[1]+bb[3]-th)/2,oy+bb[3]-th];
   xs.forEach(tx=>ys.forEach(ty=>slots.push([tx,ty])));
   for(const [slotIndex,[tx,ty]] of slots.entries()){
-   if(tx<m||tx+tw>W-m||ty<ay||ty+th>H-m)continue;
+   if(tx<m||tx+tw>W-m||ty<ay||ty+th>contentBottom)continue;
    if(force||!hit([tx-3,ty-3,tx+tw+3,ty+th+3],O,ox,oy)){
-    const tableBoxes=Array.from({length:cols},(_,c)=>[tx+c*(groupW+groupGap)-1,ty,tx+c*(groupW+groupGap)+groupW+1,ty+th]),header=headerFor(W,H,[bb[0]+ox,bb[1]+oy,bb[2]+ox,bb[3]+oy],north?[...tableBoxes,north]:tableBoxes,Rm);
+    const headerBox=cropCircle?O.pointBB:bb,tableBoxes=Array.from({length:cols},(_,c)=>[tx+c*(groupW+groupGap)-1,ty,tx+c*(groupW+groupGap)+groupW+1,ty+th]),header=headerFor(W,H,[[headerBox[0]+ox,headerBox[1]+oy,headerBox[2]+ox,headerBox[3]+oy]],north?[...tableBoxes,north]:tableBoxes,Rm);
     if(header){
      const candidate={ox,oy,tx,ty,cols,rc,tw,th,groupW,groupGap,rowH,night:slotIndex<nightSlots.length,header};
      if(!bestLayout||header.items[0].x<bestLayout.header.items[0].x||(header.items[0].x===bestLayout.header.items[0].x&&candidate.night&&!bestLayout.night))bestLayout=candidate
@@ -283,7 +286,8 @@ function mk(){
  let best=null;
  [0,1].forEach(land=>[1,2,3].forEach(cols=>{const W=land?pb:pa,H=land?pa:pb;
   const fe=Rm=>place(W,H,cols,Rm,1);let Rm=0;
-  for(let r=Math.floor((pk=='A3'?400:R0*10)/5)*5;r>=15;r-=5){if(fe(r)){Rm=r;break}}
+  const maxRadius=cropCircle?500:pk=='A3'?400:R0*10;
+  for(let r=Math.floor(maxRadius/5)*5;r>=15;r-=5){if(fe(r)){Rm=r;break}}
   if(!Rm)return;
   const Rc=Math.max(3,Math.floor(Rm/10*2)/2),layout=fe(Rc*10);
   if(!best||Rc>best.Rc||(Rc===best.Rc&&layout.night&&!best.night))best={W,H,land,cols,Rc,night:layout.night}}));
@@ -306,12 +310,13 @@ function mk(){
  for(let c=0;c<pl.cols;c++)rowsT(pl.tx+c*(pl.groupW+pl.groupGap),pl.ty+3,E.slice(c*rc,(c+1)*rc));
  const arc=[];for(let q=0;q<=len;q++){const t=(a0+q)*rad;arc.push([ox+Rm*Math.sin(t),oy-Rm*Math.cos(t)])}
  P.push({k:'p',pts:arc,c:BK,w:.4});
- CARD.forEach(([nm,a])=>{if(ia(a)){const s_=Math.sin(a*rad),c_=-Math.cos(a*rad);
-  P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(ox+(Rm+6)*s_,oy+(Rm+6)*c_+1.3,nm,10,BK,'middle',1)}});
+ const contentBottom=H-m-(cropCircle?14:0);
+ CARD.forEach(([nm,a])=>{if(ia(a)){const s_=Math.sin(a*rad),c_=-Math.cos(a*rad),x=ox+(Rm+6)*s_,y=oy+(Rm+6)*c_;
+  if(!cropCircle||(x>=m+6&&x<=W-m-6&&y>=m+6&&y<=contentBottom-6)){P.push({k:'l',x1:ox+(Rm-2)*s_,y1:oy+(Rm-2)*c_,x2:ox+(Rm+2)*s_,y2:oy+(Rm+2)*c_,c:BK,w:.4});T(x,y+1.3,nm,10,BK,'middle',1)}}});
  const hit2=(a,b)=>a[0]<b[2]&&a[2]>b[0]&&a[1]<b[3]&&a[3]>b[1];
  const pos=E.map(o=>{const rr=o.r*k*10;return[ox+rr*Math.sin(o.A*rad),oy-rr*Math.cos(o.A*rad)]});
  const placed=pos.map(q=>[q[0]-1.8,q[1]-1.8,q[0]+1.8,q[1]+1.8]);placed.push([ox-5,oy-5,ox+5,oy+5]);
- CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad);placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
+ CARD.forEach(([nm,a])=>{if(ia(a)){const x=ox+(Rm+6)*Math.sin(a*rad),y=oy-(Rm+6)*Math.cos(a*rad);if(!cropCircle||(x>=m+6&&x<=W-m-6&&y>=m+6&&y<=contentBottom-6))placed.push([x-3.5,y-3.5,x+3.5,y+3.5])}});
  const LB=[];
  E.forEach((o,i)=>{const [x,y]=pos[i];
   P.push({k:'l',x1:ox,y1:oy,x2:x,y2:y,c:BK,w:.12});P.push({k:'c',x,y,r:1.1,c:BK,fill:1});
@@ -334,8 +339,9 @@ function svgOf(L){const g=c=>`rgb(${c.join(',')})`;let s=`<svg viewBox="0 0 ${L.
   else s+=`<circle cx="${p.x}" cy="${p.y}" r="${p.r}" ${p.fill?`fill="${g(p.c)}"`:`fill="none" stroke="${g(p.c)}" stroke-width="${p.w}"`}/>`});
  return s+'</svg>'}
 function tplUpdate(){const L=mk();
+ $('crop-circle').disabled=S.mode!=='cupula';
  if(!L){$('tinfo').innerHTML=tr('pdf.noSun');$('tprev').innerHTML='';return}
- $('tinfo').innerHTML=tr('pdf.preview',{paper:L.pk,orientation:tr(L.land?'pdf.landscape':'pdf.portrait'),radius:f(L.Rc)})+(L.Rc<L.R0?tr('pdf.reduced',{radius:f(L.R0),factor:f(L.k,2)}):L.Rc>L.R0?tr('pdf.enlarged',{radius:f(L.R0),factor:f(L.k,2)}):tr('pdf.unchanged'))+tr('pdf.points');
+ $('tinfo').innerHTML=tr('pdf.preview',{paper:L.pk,orientation:tr(L.land?'pdf.landscape':'pdf.portrait'),radius:f(L.Rc)})+(L.Rc<L.R0?tr('pdf.reduced',{radius:f(L.R0),factor:f(L.k,2)}):L.Rc>L.R0?tr('pdf.enlarged',{radius:f(L.R0),factor:f(L.k,2)}):tr('pdf.unchanged'))+($('crop-circle').checked&&S.mode==='cupula'?' · '+tr('pdf.cropNotice'):'')+tr('pdf.points');
  $('tprev').innerHTML=svgOf(L)}
 function genPDF(open){const L=mk();if(!L)return;const J=window.jspdf&&window.jspdf.jsPDF;
  if(!J){alert(tr('pdf.libraryError'));return}
@@ -347,6 +353,7 @@ function genPDF(open){const L=mk();if(!L)return;const J=window.jspdf&&window.jsp
   else{d.setDrawColor(...p.c);d.setFillColor(...p.c);d.setLineWidth(p.w||.2);d.circle(p.x,p.y,p.r,p.fill?'F':'S')}});
  if(open)window.open(d.output('bloburl'),'_blank');else d.save(`${tr('pdf.filename')}_lat${S.lat}_${$('date').value}.pdf`)}
 $('paper').addEventListener('input',tplUpdate);
+$('crop-circle').addEventListener('change',tplUpdate);
 $('bpdf').addEventListener('click',()=>genPDF(0));$('bpdfo').addEventListener('click',()=>genPDF(1));
 $('tab').addEventListener('click',e=>{const r=e.target.closest('tr[data-i]');if(r){sel=+r.dataset.i;draw()}});
 $('tab').addEventListener('keydown',e=>{

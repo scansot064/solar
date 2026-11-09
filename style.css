@@ -205,6 +205,8 @@ tr.sel { background: rgb(243 173 120 / 11%); color: var(--fg); }
 #tpl .section-heading { align-items: flex-start; flex-direction: column; }
 .pdf-controls { width: 100%; align-items: flex-end; justify-content: flex-start; margin: 0; }
 .pdf-controls label { min-width: 90px; flex: 0 0 90px; }
+.pdf-controls .pdf-crop-option { min-width: 210px; flex: 1 1 210px; flex-direction: row; align-items: center; align-self: center; gap: 8px; }
+.pdf-crop-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--ac); }
 #tinfo { margin: 16px 0; }
 #tprev svg { display: block; width: min(100%, 520px); max-width: 520px; height: auto; border: 1px solid var(--ln); border-radius: 4px; background: #fff; }
 .site-footer { display: flex; justify-content: space-between; gap: 20px; padding: 28px 0 38px; border-top: 1px solid var(--ln); font-size: .62rem; }
