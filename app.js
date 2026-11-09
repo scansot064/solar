@@ -146,7 +146,8 @@ function earth(){EV=='sol'?earthSol():earthTierra()}
 function earthTierra(){
  const lat=+$('lat').value,d=S.dec,r=70,cx=70,cy=100,sx=Math.cos(d*rad),sy=Math.sin(d*rad);
  const P=(a,k=r)=>[cx+k*Math.cos(a*rad),cy-k*Math.sin(a*rad)];
- let s=`<svg viewBox="0 0 260 200" font-size="9" fill="currentColor" role="img" aria-label="${tr('earth.section')}"><title>${tr('earth.section')}</title><path d="M${cx} ${cy-r}A${r} ${r} 0 0 1 ${cx} ${cy+r}Z" fill="var(--day)" stroke="var(--mu)"/>`;
+ const dayStart=[cx-r*sy,cy-r*sx],dayEnd=[cx+r*sy,cy+r*sx];
+ let s=`<svg viewBox="0 0 260 200" font-size="9" fill="currentColor" role="img" aria-label="${tr('earth.section')}"><title>${tr('earth.section')}</title><path d="M${dayStart[0]} ${dayStart[1]}A${r} ${r} 0 0 1 ${dayEnd[0]} ${dayEnd[1]}Z" fill="var(--day)" stroke="var(--mu)"/>`;
  for(let k=-63;k<=63;k+=21){const m=Math.sqrt(r*r-k*k),px=-sy*k+m*sx,py=sx*k+m*sy;
   s+=`<line x1="${cx+px+140*sx}" y1="${cy-py-140*sy}" x2="${cx+px}" y2="${cy-py}" stroke="var(--ac)" stroke-opacity=".6"/>`}
  s+=`<line x1="${cx}" y1="${cy-r-8}" x2="${cx}" y2="${cy+r+8}" stroke="var(--fg)" stroke-width="1.5"/><line x1="${cx}" y1="${cy}" x2="${cx+r}" y2="${cy}" stroke="var(--mu)"/>`;
