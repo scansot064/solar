@@ -1,5 +1,6 @@
 
-import {AXIAL_TILT,POLAR_CIRCLE_OFFSET,clamp,computeSun} from './src/astro.js';
+import {clamp,computeSun} from './src/astro.js';
+import {renderEarthSol,renderEarthTierra} from './src/earthView.js';
 import {layoutTemplate} from './src/template.js';
 
 const $=id=>document.getElementById(id),rad=Math.PI/180;
@@ -112,47 +113,12 @@ function steps(){
 }
 
 function earthSol(){
- const lat=+$('lat').value,d=S.dec,r=70,cx=95,cy=100,dr=d*rad;
- const P=(la,k=r,side=0)=>{const t=(side?Math.PI-la*rad:la*rad)-dr;return[cx+k*Math.cos(t),cy-k*Math.sin(t)]};
- let s=`<svg viewBox="0 0 260 200" font-size="9" fill="currentColor" role="img" aria-label="${tr('earth.section')}"><title>${tr('earth.section')}</title><circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--day)" stroke="var(--mu)"/>`;
- s+=`<path d="M${cx} ${cy-r}A${r} ${r} 0 0 0 ${cx} ${cy+r}Z" fill="var(--night)"/>`;
- for(let k=-63;k<=63;k+=21)s+=`<line x1="225" y1="${cy-k}" x2="${cx+Math.sqrt(r*r-k*k)}" y2="${cy-k}" stroke="var(--ac)" stroke-opacity=".6"/>`;
- const L=(a,b,x,w=1)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${x}" stroke-width="${w}"`;
- s+=L(P(90,r+10),P(-90,r+10),'var(--fg)',1.5)+'/>';
- s+=L(P(0),P(0,r,1),'var(--mu)')+'/>';
- [AXIAL_TILT,-AXIAL_TILT,POLAR_CIRCLE_OFFSET,-POLAR_CIRCLE_OFFSET].forEach(a=>s+=L(P(a),P(a,r,1),'var(--mu)')+' stroke-dasharray="3 3" stroke-opacity=".8"/>');
- const n=P(90,r+19),sp=P(-90,r+19);
- s+=`<text x="${n[0]}" y="${n[1]+3}" text-anchor="middle" font-weight="700">N</text><text x="${sp[0]}" y="${sp[1]+3}" text-anchor="middle" font-weight="700">S</text>`;
- s+=`<text x="${cx+30}" y="${cy+r+22}" text-anchor="middle" fill="var(--mu)">${tr('svg.day')}</text><text x="${cx-30}" y="${cy+r+22}" text-anchor="middle" fill="var(--mu)">${tr('svg.night')}</text>`;
- const th=lat*rad-dr,[ax,ay]=P(lat),[ox,oy]=P(lat,r+12);
- if(Math.cos(th)>0)s+=L([225,ay],[ax,ay],'var(--ac)',1.6)+'/>';
- s+=L([ax-14*Math.sin(th),ay-14*Math.cos(th)],[ax+14*Math.sin(th),ay+14*Math.cos(th)],'var(--bl)',1.4)+'/>';
- s+=`<circle cx="${ax}" cy="${ay}" r="3.5" fill="var(--bl)" stroke="var(--bg)" stroke-width="1.5"/><circle cx="${ax}" cy="${ay}" r="6" fill="none" stroke="var(--bl)" stroke-opacity=".5"/>`;
- s+=`<circle cx="242" cy="${cy+5}" r="8" fill="var(--day)"/><g stroke="var(--day)" stroke-width="1.5"><path d="M242 ${cy-8}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/></g><text x="242" y="${cy+24}" text-anchor="middle" fill="var(--mu)">${tr('svg.fixedSun')}</text></svg>`;
- const em=90-Math.abs(lat-d),tilt=Math.abs(d)<1?tr('earth.solarAxisStill'):tr('earth.axisTilt',{degrees:f(Math.abs(d)),direction:tr(d>0?'earth.axisToward':'earth.axisAway')+' '});
- const elevation=em>0?tr('earth.elevation',{value:f(em,0)}):tr('earth.noSun');
- $('earth').innerHTML=s+`<div class="mu">${tr('earth.solIntro',{tilt,declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div>`;
+ $('earth').innerHTML=renderEarthSol({latitude:+$('lat').value,declination:S.dec,helpers:{translate:tr,formatNumber:f}});
 }
 let EV='sol';
 function earth(){EV=='sol'?earthSol():earthTierra()}
 function earthTierra(){
- const lat=+$('lat').value,d=S.dec,r=70,cx=70,cy=100,sx=Math.cos(d*rad),sy=Math.sin(d*rad);
- const P=(a,k=r)=>[cx+k*Math.cos(a*rad),cy-k*Math.sin(a*rad)];
- const dayStart=[cx-r*sy,cy-r*sx],dayEnd=[cx+r*sy,cy+r*sx];
- let s=`<svg viewBox="0 0 260 200" font-size="9" fill="currentColor" role="img" aria-label="${tr('earth.section')}"><title>${tr('earth.section')}</title><path d="M${dayStart[0]} ${dayStart[1]}A${r} ${r} 0 0 1 ${dayEnd[0]} ${dayEnd[1]}Z" fill="var(--day)" stroke="var(--mu)"/>`;
- for(let k=-63;k<=63;k+=21){const m=Math.sqrt(r*r-k*k),px=-sy*k+m*sx,py=sx*k+m*sy;
-  s+=`<line x1="${cx+px+140*sx}" y1="${cy-py-140*sy}" x2="${cx+px}" y2="${cy-py}" stroke="var(--ac)" stroke-opacity=".6"/>`}
- s+=`<line x1="${cx}" y1="${cy-r-8}" x2="${cx}" y2="${cy+r+8}" stroke="var(--fg)" stroke-width="1.5"/><line x1="${cx}" y1="${cy}" x2="${cx+r}" y2="${cy}" stroke="var(--mu)"/>`;
- [AXIAL_TILT,-AXIAL_TILT,POLAR_CIRCLE_OFFSET,-POLAR_CIRCLE_OFFSET].forEach(a=>{const q=P(a);s+=`<line x1="${cx}" y1="${q[1]}" x2="${q[0]}" y2="${q[1]}" stroke="var(--mu)" stroke-dasharray="3 3" stroke-opacity=".8"/>`});
- s+=`<text x="${cx}" y="${cy-r-11}" text-anchor="middle" font-weight="700">N</text><text x="${cx}" y="${cy+r+19}" text-anchor="middle" font-weight="700">S</text>`;
- const th=lat*rad,[ax,ay]=P(lat),[ox,oy]=P(lat,r+12);
- if(Math.cos(th-d*rad)>0)s+=`<line x1="${ax}" y1="${ay}" x2="${ax+140*sx}" y2="${ay-140*sy}" stroke="var(--ac)" stroke-width="1.6"/>`;
- s+=`<line x1="${ax-14*Math.sin(th)}" y1="${ay-14*Math.cos(th)}" x2="${ax+14*Math.sin(th)}" y2="${ay+14*Math.cos(th)}" stroke="var(--bl)" stroke-width="1.4"/>`;
- s+=`<circle cx="${ax}" cy="${ay}" r="3.5" fill="var(--bl)" stroke="var(--bg)" stroke-width="1.5"/><circle cx="${ax}" cy="${ay}" r="6" fill="none" stroke="var(--bl)" stroke-opacity=".5"/>`;
- s+=`<circle cx="${cx+160*sx}" cy="${cy-160*sy}" r="8" fill="var(--day)"/><g stroke="var(--day)" stroke-width="1.5"><path d="M${cx+160*sx} ${cy-160*sy-13}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/></g></svg>`;
- const em=90-Math.abs(lat-d);
- const elevation=em>0?tr('earth.elevation',{value:f(em,0)}):tr('earth.noSun');
- $('earth').innerHTML=s+`<div class="mu">${tr('earth.tierraIntro',{declination:f(d),latitude:Math.abs(lat),hemisphere:lat>=0?'N':'S',elevation},['elevation'])}</div>`;
+ $('earth').innerHTML=renderEarthTierra({latitude:+$('lat').value,declination:S.dec,helpers:{translate:tr,formatNumber:f}});
 }
 let drag=0;const eb=$('earth');
 const pick=e=>{const so=EV=='sol',cx=so?95:70,b=eb.querySelector('svg').getBoundingClientRect(),x=(e.clientX-b.left)*260/b.width-cx,y=100-(e.clientY-b.top)*200/b.height;
