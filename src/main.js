@@ -166,7 +166,7 @@ export function createApp({ state, modules }) {
     }
 
     draw();
-    updateTemplatePreview();
+    scheduleTemplatePreview();
     state.selectedIndex = selectedIndex;
   }
 
@@ -514,8 +514,27 @@ export function createApp({ state, modules }) {
     };
   }
 
-  function updateTemplatePreview() {
-    const layout = layoutTemplate(getTemplateInput());
+  let templatePreviewTimer;
+  let cachedTemplateKey;
+  let cachedTemplateLayout;
+
+  function getTemplateLayout(templateInput = getTemplateInput()) {
+    const key = JSON.stringify({
+      state: templateInput.state,
+      options: templateInput.options,
+      citySummary: templateInput.helpers.citySummary
+    });
+
+    if (key !== cachedTemplateKey) {
+      cachedTemplateLayout = layoutTemplate(templateInput);
+      cachedTemplateKey = key;
+    }
+
+    return cachedTemplateLayout;
+  }
+
+  function updateTemplatePreview(templateInput = getTemplateInput()) {
+    const layout = getTemplateLayout(templateInput);
     $('crop-circle').disabled = solarState.mode !== 'cupula';
 
     if (!layout) {
@@ -554,18 +573,33 @@ export function createApp({ state, modules }) {
     $('tprev').innerHTML = renderPdfPreviewSvg(layout);
   }
 
+  function scheduleTemplatePreview() {
+    clearTimeout(templatePreviewTimer);
+    templatePreviewTimer = setTimeout(() => {
+      templatePreviewTimer = null;
+      updateTemplatePreview();
+    }, 150);
+  }
+
   function generatePDF(open) {
+    clearTimeout(templatePreviewTimer);
+    templatePreviewTimer = null;
+
+    const templateInput = getTemplateInput();
+    const layout = getTemplateLayout(templateInput);
+    updateTemplatePreview(templateInput);
     genPDF({
       open,
-      template: getTemplateInput(),
+      template: templateInput,
+      layout,
       latitude: solarState.lat,
       date: $('date').value,
       translate: tr
     });
   }
 
-  $('paper').addEventListener('input', updateTemplatePreview);
-  $('crop-circle').addEventListener('change', updateTemplatePreview);
+  $('paper').addEventListener('input', scheduleTemplatePreview);
+  $('crop-circle').addEventListener('change', scheduleTemplatePreview);
   $('bpdf').addEventListener('click', () => generatePDF(false));
   $('bpdfo').addEventListener('click', () => generatePDF(true));
   $('tab').addEventListener('click', domEvent => {

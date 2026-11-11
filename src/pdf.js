@@ -96,8 +96,9 @@ function drawPdfItem(pdf, item, alignment) {
   pdf.circle(item.x, item.y, item.r, item.fill ? 'F' : 'S');
 }
 
-export function genPDF({ open, template, latitude, date, translate }) {
-  const layout = layoutTemplate(template);
+export function genPDF({ open, template, layout: preparedLayout, latitude, date, translate }) {
+  const layout =
+    preparedLayout === undefined ? layoutTemplate(template) : preparedLayout;
   if (!layout) {
     return;
   }
