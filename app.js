@@ -330,6 +330,64 @@ function mk(){
  P.push(...tableItems);
  T(m,H-7,tr('pdf.attribution'),6.5,G1);
  T(m,H-3,tr('pdf.license'),6.5,G1);
+ const lineHitsBox=(x1,y1,x2,y2,b)=>{
+  let t0=0,t1=1;const dx=x2-x1,dy=y2-y1;
+  for(const [p,q] of[[-dx,x1-b[0]],[dx,b[2]-x1],[-dy,y1-b[1]],[dy,b[3]-y1]]){
+   if(p===0){if(q<0)return false}
+   else{const t=q/p;if(p<0){if(t>t1)return false;t0=Math.max(t0,t)}else{if(t<t0)return false;t1=Math.min(t1,t)}}
+  }
+  return true
+ };
+ const touches=(b,p)=>{
+  if(p.k==='t'){
+   const w=p.s.length*p.pt*.19,left=p.an==='end'?p.x-w:p.an==='middle'?p.x-w/2:p.x;
+   return left<b[2]&&left+w>b[0]&&p.y-p.pt*.4<b[3]&&p.y+p.pt*.08>b[1]
+  }
+  if(p.k==='r')return p.x<b[2]&&p.x+p.w>b[0]&&p.y<b[3]&&p.y+p.h>b[1];
+  if(p.k==='c'){
+   const x=Math.max(b[0],Math.min(p.x,b[2])),y=Math.max(b[1],Math.min(p.y,b[3]));
+   return (p.x-x)**2+(p.y-y)**2<=(p.r+(p.w||0)/2)**2
+  }
+  if(p.k==='l')return lineHitsBox(p.x1,p.y1,p.x2,p.y2,b);
+  for(let i=1;i<p.pts.length;i++)if(lineHitsBox(...p.pts[i-1],...p.pts[i],b))return true;
+  return false
+ };
+ const addGlobe=()=>{
+  for(let diameter=40;diameter>=28;diameter-=2){
+   const r=diameter*.32,w=2*r+12,h=2*r+16;
+   for(let y=H-20-h;y>=8;y-=4)for(let x=8;x<=W-w-8;x+=4){
+    const b=[x,y,x+w,y+h];
+    if(P.some(p=>touches(b,p)))continue;
+    const cx=x+r+2,cy=y+r+4,latAngle=(S.lat-S.dec)*rad,latitudeY=cy-r*Math.sin(latAngle);
+    const stroke=[75,91,105],parallel=[164,178,188],blue=[44,117,158],sun=[220,151,47];
+    P.push({k:'c',x:cx,y:cy,r,c:[247,250,252],fill:1});
+    for(let latitude=-60;latitude<=60;latitude+=30){
+     const py=cy-r*Math.sin((latitude-S.dec)*rad),half=Math.sqrt(Math.max(0,r*r-(py-cy)**2));
+     P.push({k:'l',x1:cx-half,y1:py,x2:cx+half,y2:py,c:latitude===0?stroke:parallel,w:latitude===0?.35:.2})
+    }
+    const latitudeHalf=Math.sqrt(Math.max(0,r*r-(latitudeY-cy)**2)),surfaceX=cx+r*Math.cos(latAngle);
+    P.push({k:'l',x1:cx-latitudeHalf,y1:latitudeY,x2:cx+latitudeHalf,y2:latitudeY,c:blue,w:.65});
+    P.push({k:'c',x:surfaceX,y:latitudeY,r:.85,c:blue,fill:1});
+    P.push({k:'c',x:cx,y:cy,r,c:stroke,w:.45});
+    if(Math.cos(latAngle)>0){
+     const sunX=x+w-3.4;
+     for(const offset of[-3.2,0,3.2]){
+      const rayY=Math.max(cy-r*.88,Math.min(cy+r*.88,latitudeY+offset));
+      const rayEdge=cx+Math.sqrt(Math.max(0,r*r-(rayY-cy)**2));
+      P.push({k:'l',x1:rayEdge,y1:rayY,x2:sunX-1.8,y2:rayY,c:sun,w:.3})
+     }
+     P.push({k:'c',x:sunX,y:latitudeY,r:1.6,c:sun,fill:1});
+     for(let angle=0;angle<360;angle+=45){
+      const a=angle*rad;
+      P.push({k:'l',x1:sunX+2.1*Math.sin(a),y1:latitudeY-2.1*Math.cos(a),x2:sunX+3.1*Math.sin(a),y2:latitudeY-3.1*Math.cos(a),c:sun,w:.35})
+     }
+    }
+    T(cx,cy+r+6,f(Math.abs(S.lat),0)+'º '+(S.lat>=0?'N':'S'),7.5,stroke,'middle');
+    return
+   }
+  }
+ };
+ addGlobe();
  return{P,W,H,land,Rc,k,R0,pk}}
 function svgOf(L){const g=c=>`rgb(${c.join(',')})`;let s=`<svg viewBox="0 0 ${L.W} ${L.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${L.W}" height="${L.H}" fill="#fff"/>`;
  L.P.forEach(p=>{if(p.k=='t')s+=`<text x="${p.x}" y="${p.y}" font-size="${p.pt*.3528}" fill="${g(p.c)}" text-anchor="${p.an}" font-family="Helvetica,Arial,sans-serif"${p.b?' font-weight="700"':''}>${escapeHtml(p.s)}</text>`;
