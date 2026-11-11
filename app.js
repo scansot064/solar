@@ -1,47 +1,15 @@
 
 import {clamp,computeSun} from './src/astro.js';
 import {renderEarthSol,renderEarthTierra} from './src/earthView.js';
+import {getLanguage,getSavedLanguage,getTranslation,setLanguage,tr} from './src/i18n.js';
 import {layoutTemplate} from './src/template.js';
+import {genPDF,renderPdfPreviewSvg} from './src/pdf.js';
 
 const $=id=>document.getElementById(id),rad=Math.PI/180;
-let LANG='es',T={},localeCache={};
-const f=(x,d=1)=>x.toFixed(d).replace('.',LANG==='es'?',':'.');
+const f=(x,d=1)=>x.toFixed(d).replace('.',getLanguage()==='es'?',':'.');
 const tf=t=>{let h=Math.floor(t),m=Math.round((t-h)*60);if(m==60){h++;m=0}return h+':'+String(m).padStart(2,'0')};
 let E=[],S={},sel=0;
 let CIUDADES=null; // se carga desde ciudades.json: [{"nombre":..., "lat":...}], ordenadas por fama
-const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-function tr(key,values={},rawValues=[]){
- const message=T[key];
- if(typeof message!=='string')throw new Error(`Missing translation "${key}" for ${LANG}`);
- return message.replace(/\{(\w+)\}/g,(_,name)=>rawValues.includes(name)?String(values[name]??''):escapeHtml(values[name]??''));
-}
-async function loadLocale(lang){
- if(!['es','en'].includes(lang))throw new Error(`Unsupported language: ${lang}`);
- if(!localeCache[lang]){
-  const response=await fetch(`locales/${lang}.json`);
-  if(!response.ok)throw new Error(`Could not load locales/${lang}.json (${response.status})`);
-  const dictionary=await response.json();
-  if(!dictionary||Array.isArray(dictionary)||typeof dictionary!=='object')throw new Error(`Invalid locale file: locales/${lang}.json`);
-  localeCache[lang]=dictionary;
- }
- const dictionary=localeCache[lang];
- const keys=[...document.querySelectorAll('[data-i18n]')].map(node=>node.dataset.i18n)
-  .concat([...document.querySelectorAll('[data-i18n-aria-label]')].map(node=>node.dataset.i18nAriaLabel))
-  .concat([...document.querySelectorAll('[data-i18n-content]')].map(node=>node.dataset.i18nContent))
-  .concat([...document.querySelectorAll('[data-i18n-alt]')].map(node=>node.dataset.i18nAlt));
- const missing=keys.filter(key=>typeof dictionary[key]!=='string');
- if(missing.length)throw new Error(`Missing translations in locales/${lang}.json: ${missing.join(', ')}`);
- LANG=lang;T=dictionary;
- document.documentElement.lang=lang;
- document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=tr(node.dataset.i18n)});
- document.querySelectorAll('[data-i18n-aria-label]').forEach(node=>{node.setAttribute('aria-label',tr(node.dataset.i18nAriaLabel))});
- document.querySelectorAll('[data-i18n-content]').forEach(node=>{node.setAttribute('content',tr(node.dataset.i18nContent))});
- document.querySelectorAll('[data-i18n-alt]').forEach(node=>{node.setAttribute('alt',tr(node.dataset.i18nAlt))});
- $('language').value=lang;
- $('status').hidden=true;
- try{localStorage.setItem('solar-language',lang)}catch(error){console.warn('Could not save language preference.',error)}
- run(1);
-}
 function setTheme(theme){
  if(!['light','dark'].includes(theme))throw new Error(`Unsupported theme: ${theme}`);
  document.documentElement.dataset.theme=theme;
@@ -147,45 +115,30 @@ function craft(){
  <ol>${list(['craft.question1','craft.question2','craft.question3','craft.question4','craft.question5','craft.question6'])}</ol>`;
 }
 
-function svgOf(L){const g=c=>`rgb(${c.join(',')})`;let s=`<svg viewBox="0 0 ${L.W} ${L.H}" xmlns="http://www.w3.org/2000/svg"><rect width="${L.W}" height="${L.H}" fill="#fff"/>`;
- L.P.forEach(p=>{if(p.k=='t')s+=`<text x="${p.x}" y="${p.y}" font-size="${p.pt*.3528}" fill="${g(p.c)}" text-anchor="${p.an}" font-family="Helvetica,Arial,sans-serif"${p.b?' font-weight="700"':''}>${escapeHtml(p.s)}</text>`;
-  else if(p.k=='r')s+=`<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="${g(p.c)}"/>`;
-  else if(p.k=='l')s+=`<line x1="${p.x1}" y1="${p.y1}" x2="${p.x2}" y2="${p.y2}" stroke="${g(p.c)}" stroke-width="${p.w}"/>`;
-  else if(p.k=='p')s+=`<polyline points="${p.pts.map(q=>q.join(',')).join(' ')}" fill="none" stroke="${g(p.c)}" stroke-width="${p.w}"/>`;
-  else s+=`<circle cx="${p.x}" cy="${p.y}" r="${p.r}" ${p.fill?`fill="${g(p.c)}"`:`fill="none" stroke="${g(p.c)}" stroke-width="${p.w}"`}/>`});
- return s+'</svg>'}
-function templateLayout(){return layoutTemplate({
+function templateInput(){return{
  state:{events:E,radius:S.R,model:S.mode,latitude:S.lat,declination:S.dec,daylightAngle:S.H0,date:$('date').value},
- options:{paper:$('paper').value,cropCircle:$('crop-circle').checked,language:LANG},
+ options:{paper:$('paper').value,cropCircle:$('crop-circle').checked,language:getLanguage()},
  helpers:{translate:tr,formatNumber:f,formatTime:tf,citySummary:Array.isArray(CIUDADES)&&CIUDADES.length?ciudades(S.lat):tr('pdf.citiesUnavailable')}
-})}
-function tplUpdate(){const L=templateLayout();
+}}
+function tplUpdate(){const L=layoutTemplate(templateInput());
  $('crop-circle').disabled=S.mode!=='cupula';
  if(!L){$('tinfo').innerHTML=tr('pdf.noSun');$('tprev').innerHTML='';return}
  $('tinfo').innerHTML=tr('pdf.preview',{paper:L.pk,orientation:tr(L.land?'pdf.landscape':'pdf.portrait'),radius:f(L.Rc)})+(L.Rc<L.R0?tr('pdf.reduced',{radius:f(L.R0),factor:f(L.k,2)}):L.Rc>L.R0?tr('pdf.enlarged',{radius:f(L.R0),factor:f(L.k,2)}):tr('pdf.unchanged'))+($('crop-circle').checked&&S.mode==='cupula'?' · '+tr('pdf.cropNotice'):'')+tr('pdf.points');
- $('tprev').innerHTML=svgOf(L)}
-function genPDF(open){const L=templateLayout();if(!L)return;const J=window.jspdf&&window.jspdf.jsPDF;
- if(!J){alert(tr('pdf.libraryError'));return}
- const d=new J({unit:'mm',format:[L.W,L.H],orientation:L.W>L.H?'l':'p'}),AL={start:'left',end:'right',middle:'center'};
- L.P.forEach(p=>{if(p.k=='t'){d.setFont('helvetica',p.b?'bold':'normal');d.setFontSize(p.pt);d.setTextColor(...p.c);d.text(p.s,p.x,p.y,{align:AL[p.an]})}
-  else if(p.k=='r'){d.setFillColor(...p.c);d.rect(p.x,p.y,p.w,p.h,'F')}
-  else if(p.k=='l'){d.setDrawColor(...p.c);d.setLineWidth(p.w);d.line(p.x1,p.y1,p.x2,p.y2)}
-  else if(p.k=='p'){d.setDrawColor(...p.c);d.setLineWidth(p.w);for(let i=1;i<p.pts.length;i++)d.line(p.pts[i-1][0],p.pts[i-1][1],p.pts[i][0],p.pts[i][1])}
-  else{d.setDrawColor(...p.c);d.setFillColor(...p.c);d.setLineWidth(p.w||.2);d.circle(p.x,p.y,p.r,p.fill?'F':'S')}});
- if(open)window.open(d.output('bloburl'),'_blank');else d.save(`${tr('pdf.filename')}_lat${S.lat}_${$('date').value}.pdf`)}
+ $('tprev').innerHTML=renderPdfPreviewSvg(L)}
 $('paper').addEventListener('input',tplUpdate);
 $('crop-circle').addEventListener('change',tplUpdate);
-$('bpdf').addEventListener('click',()=>genPDF(0));$('bpdfo').addEventListener('click',()=>genPDF(1));
+$('bpdf').addEventListener('click',()=>genPDF({open:false,template:templateInput(),latitude:S.lat,date:$('date').value,translate:tr}));
+$('bpdfo').addEventListener('click',()=>genPDF({open:true,template:templateInput(),latitude:S.lat,date:$('date').value,translate:tr}));
 $('tab').addEventListener('click',e=>{const r=e.target.closest('tr[data-i]');if(r){sel=+r.dataset.i;draw()}});
 $('tab').addEventListener('keydown',e=>{
  if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-i]')){e.preventDefault();e.target.click()}
 });
 $('language').addEventListener('change',async e=>{
- try{await loadLocale(e.target.value)}
+ try{await setLanguage(e.target.value);run(1)}
  catch(error){
   console.error(error);
-  $('language').value=LANG;
-  $('status').textContent=T['language.loadError']||error.message;
+  $('language').value=getLanguage();
+  $('status').textContent=getTranslation('language.loadError')||error.message;
   $('status').hidden=false;
  }
 });
@@ -203,14 +156,11 @@ document.querySelectorAll('#etg button').forEach((b,_,all)=>b.addEventListener('
  earth();
 }));
 try{
- const savedLanguage=localStorage.getItem('solar-language');
- if(savedLanguage==='es'||savedLanguage==='en')LANG=savedLanguage;
-}catch(error){console.warn('Could not read saved language preference.',error)}
-try{
  const savedTheme=localStorage.getItem('solar-theme');
  if(savedTheme==='light'||savedTheme==='dark')setTheme(savedTheme);
 }catch(error){console.warn('Could not read saved theme preference.',error)}
-loadLocale(LANG).then(()=>{
+setLanguage(getSavedLanguage()).then(()=>{
+ run(1);
  fetch('ciudades.json').then(response=>{
   if(!response.ok)throw new Error(`Could not load ciudades.json (${response.status})`);
   return response.json();
