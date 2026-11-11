@@ -359,12 +359,10 @@ function mk(){
     const b=[x,y,x+w,y+h];
     if(P.some(p=>touches(b,p)))continue;
     const cx=x+r+2,cy=y+r+4,latAngle=(S.lat-S.dec)*rad,latitudeY=cy-r*Math.sin(latAngle);
-    const stroke=[75,91,105],parallel=[164,178,188],blue=[44,117,158],sun=[220,151,47];
+    const stroke=[75,91,105],blue=[44,117,158],sun=[220,151,47];
     P.push({k:'c',x:cx,y:cy,r,c:[247,250,252],fill:1});
-    for(let latitude=-60;latitude<=60;latitude+=30){
-     const py=cy-r*Math.sin((latitude-S.dec)*rad),half=Math.sqrt(Math.max(0,r*r-(py-cy)**2));
-     P.push({k:'l',x1:cx-half,y1:py,x2:cx+half,y2:py,c:latitude===0?stroke:parallel,w:latitude===0?.35:.2})
-    }
+    const equatorY=cy-r*Math.sin(-S.dec*rad),equatorHalf=Math.sqrt(Math.max(0,r*r-(equatorY-cy)**2));
+    P.push({k:'l',x1:cx-equatorHalf,y1:equatorY,x2:cx+equatorHalf,y2:equatorY,c:stroke,w:.35});
     const latitudeHalf=Math.sqrt(Math.max(0,r*r-(latitudeY-cy)**2)),surfaceX=cx+r*Math.cos(latAngle);
     P.push({k:'l',x1:cx-latitudeHalf,y1:latitudeY,x2:cx+latitudeHalf,y2:latitudeY,c:blue,w:.65});
     P.push({k:'c',x:surfaceX,y:latitudeY,r:.85,c:blue,fill:1});
