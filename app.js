@@ -358,14 +358,15 @@ function mk(){
    for(let y=H-20-h;y>=8;y-=4)for(let x=8;x<=W-w-8;x+=4){
     const b=[x,y,x+w,y+h];
     if(P.some(p=>touches(b,p)))continue;
-    const cx=x+r+2,cy=y+r+4,latAngle=(S.lat-S.dec)*rad,latitudeY=cy-r*Math.sin(latAngle);
+    const cx=x+r+2,cy=y+r+4,decAngle=S.dec*rad,latAngle=(S.lat-S.dec)*rad,latitudeY=cy-r*Math.sin(latAngle);
     const stroke=[75,91,105],equator=[177,185,192],blue=[32,121,174],sun=[220,151,47];
     P.push({k:'c',x:cx,y:cy,r,c:[247,250,252],fill:1});
     P.push({k:'c',x:cx,y:cy,r,c:stroke,w:.45});
-    const equatorY=cy-r*Math.sin(-S.dec*rad),equatorHalf=Math.sqrt(Math.max(0,r*r-(equatorY-cy)**2));
-    P.push({k:'l',x1:cx-equatorHalf,y1:equatorY,x2:cx+equatorHalf,y2:equatorY,c:equator,w:.25});
-    const latitudeHalf=Math.sqrt(Math.max(0,r*r-(latitudeY-cy)**2)),surfaceX=cx+r*Math.cos(latAngle);
-    P.push({k:'l',x1:cx-latitudeHalf,y1:latitudeY,x2:cx+latitudeHalf,y2:latitudeY,c:blue,w:.85});
+    const eastX=Math.cos(decAngle),eastY=Math.sin(decAngle),northX=Math.sin(decAngle),northY=-Math.cos(decAngle);
+    if(Math.abs(S.lat)>1e-6)P.push({k:'l',x1:cx-r*eastX,y1:cy-r*eastY,x2:cx+r*eastX,y2:cy+r*eastY,c:equator,w:.25});
+    const latitudeOffset=r*Math.sin(S.lat*rad),latitudeHalf=r*Math.cos(S.lat*rad);
+    P.push({k:'l',x1:cx+latitudeOffset*northX-latitudeHalf*eastX,y1:cy+latitudeOffset*northY-latitudeHalf*eastY,x2:cx+latitudeOffset*northX+latitudeHalf*eastX,y2:cy+latitudeOffset*northY+latitudeHalf*eastY,c:blue,w:.85});
+    const surfaceX=cx+r*Math.cos(latAngle);
     P.push({k:'c',x:surfaceX,y:latitudeY,r:1.35,c:[255,255,255],fill:1});
     P.push({k:'c',x:surfaceX,y:latitudeY,r:.85,c:blue,fill:1});
     if(Math.cos(latAngle)>0){
