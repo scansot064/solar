@@ -206,6 +206,8 @@ function mk(){
   const texts=[
    {text:tr('pdf.titleLine',{latitude:Math.abs(S.lat),hemisphere:S.lat>=0?'N':'S',date:dateTxt}),pt:10.5,bold:1,step:3.7},
    {text:tr('pdf.subtitle',{declination:f(S.dec),radius,scaling,model:tr(cup?'pdf.modelDome':'pdf.modelPole'),paper:pk}),pt:8,step:3.2},
+   {text:tr('pdf.daylight',{hours:f(S.H0/7.5)}),pt:7.5,step:2.8},
+   {text:Array.isArray(CIUDADES)&&CIUDADES.length?ciudades(S.lat):tr('pdf.citiesUnavailable'),pt:7.5,step:2.8},
    {text:tr('pdf.instructions',{trimmed:E.some(o=>o.cap)?tr('pdf.trimmed'):''}),pt:8,step:3.2},
    {text:tr('pdf.solarTime'),pt:8,bold:1,step:3.2}
   ];

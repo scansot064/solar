@@ -114,6 +114,8 @@
   "pdf.libraryError": "No se pudo cargar la librería jsPDF (¿sin conexión?).",
   "pdf.titleLine": "Maqueta solar - Latitud {latitude}º {hemisphere} - {date}",
   "pdf.subtitle": "Declinación {declination}º | Radio de la plantilla R = {radius} cm{scaling} | Modelo {model} | Papel {paper}",
+  "pdf.daylight": "Horas de luz: {hours} h",
+  "pdf.citiesUnavailable": "Datos de ciudades cercanas no disponibles.",
   "pdf.scaledDown": " (reducido desde {radius} cm)",
   "pdf.scaledUp": " (ampliado desde {radius} cm)",
   "pdf.solarTime": "Horas SOLARES, no del reloj: en España el reloj va adelantado ~1 h en invierno y ~2 h en verano.",

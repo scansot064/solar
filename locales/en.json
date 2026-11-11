@@ -114,6 +114,8 @@
   "pdf.libraryError": "The jsPDF library could not be loaded (are you offline?).",
   "pdf.titleLine": "Solar model - Latitude {latitude}º {hemisphere} - {date}",
   "pdf.subtitle": "Declination {declination}º | Template radius R = {radius} cm{scaling} | Model: {model} | Paper: {paper}",
+  "pdf.daylight": "Daylight: {hours} h",
+  "pdf.citiesUnavailable": "Nearby city data unavailable.",
   "pdf.scaledDown": " (reduced from {radius} cm)",
   "pdf.scaledUp": " (enlarged from {radius} cm)",
   "pdf.solarTime": "SOLAR time, not clock time: in Spain, clocks are ~1 h ahead in winter and ~2 h ahead in summer.",
