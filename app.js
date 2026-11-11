@@ -359,14 +359,15 @@ function mk(){
     const b=[x,y,x+w,y+h];
     if(P.some(p=>touches(b,p)))continue;
     const cx=x+r+2,cy=y+r+4,latAngle=(S.lat-S.dec)*rad,latitudeY=cy-r*Math.sin(latAngle);
-    const stroke=[75,91,105],blue=[44,117,158],sun=[220,151,47];
+    const stroke=[75,91,105],equator=[177,185,192],blue=[32,121,174],sun=[220,151,47];
     P.push({k:'c',x:cx,y:cy,r,c:[247,250,252],fill:1});
-    const equatorY=cy-r*Math.sin(-S.dec*rad),equatorHalf=Math.sqrt(Math.max(0,r*r-(equatorY-cy)**2));
-    P.push({k:'l',x1:cx-equatorHalf,y1:equatorY,x2:cx+equatorHalf,y2:equatorY,c:stroke,w:.35});
-    const latitudeHalf=Math.sqrt(Math.max(0,r*r-(latitudeY-cy)**2)),surfaceX=cx+r*Math.cos(latAngle);
-    P.push({k:'l',x1:cx-latitudeHalf,y1:latitudeY,x2:cx+latitudeHalf,y2:latitudeY,c:blue,w:.65});
-    P.push({k:'c',x:surfaceX,y:latitudeY,r:.85,c:blue,fill:1});
     P.push({k:'c',x:cx,y:cy,r,c:stroke,w:.45});
+    const equatorY=cy-r*Math.sin(-S.dec*rad),equatorHalf=Math.sqrt(Math.max(0,r*r-(equatorY-cy)**2));
+    P.push({k:'l',x1:cx-equatorHalf,y1:equatorY,x2:cx+equatorHalf,y2:equatorY,c:equator,w:.25});
+    const latitudeHalf=Math.sqrt(Math.max(0,r*r-(latitudeY-cy)**2)),surfaceX=cx+r*Math.cos(latAngle);
+    P.push({k:'l',x1:cx-latitudeHalf,y1:latitudeY,x2:cx+latitudeHalf,y2:latitudeY,c:blue,w:.85});
+    P.push({k:'c',x:surfaceX,y:latitudeY,r:1.35,c:[255,255,255],fill:1});
+    P.push({k:'c',x:surfaceX,y:latitudeY,r:.85,c:blue,fill:1});
     if(Math.cos(latAngle)>0){
      const sunX=x+w-3.4;
      for(const offset of[-3.2,0,3.2]){
@@ -380,7 +381,7 @@ function mk(){
       P.push({k:'l',x1:sunX+2.1*Math.sin(a),y1:latitudeY-2.1*Math.cos(a),x2:sunX+3.1*Math.sin(a),y2:latitudeY-3.1*Math.cos(a),c:sun,w:.35})
      }
     }
-    T(cx,cy+r+6,f(Math.abs(S.lat),0)+'º '+(S.lat>=0?'N':'S'),7.5,stroke,'middle');
+    T(cx,cy+r+6,f(Math.abs(S.lat),0)+'º '+(S.lat>=0?'N':'S'),7.5,blue,'middle');
     return
    }
   }
