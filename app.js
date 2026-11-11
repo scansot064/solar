@@ -364,6 +364,7 @@ function mk(){
     P.push({k:'c',x:cx,y:cy,r,c:stroke,w:.45});
     const eastX=Math.cos(decAngle),eastY=Math.sin(decAngle),northX=Math.sin(decAngle),northY=-Math.cos(decAngle);
     if(Math.abs(S.lat)>1e-6)P.push({k:'l',x1:cx-r*eastX,y1:cy-r*eastY,x2:cx+r*eastX,y2:cy+r*eastY,c:equator,w:.25});
+    P.push({k:'l',x1:cx-(r+2)*northX,y1:cy-(r+2)*northY,x2:cx+(r+2)*northX,y2:cy+(r+2)*northY,c:equator,w:.2});
     const latitudeOffset=r*Math.sin(S.lat*rad),latitudeHalf=r*Math.cos(S.lat*rad);
     P.push({k:'l',x1:cx+latitudeOffset*northX-latitudeHalf*eastX,y1:cy+latitudeOffset*northY-latitudeHalf*eastY,x2:cx+latitudeOffset*northX+latitudeHalf*eastX,y2:cy+latitudeOffset*northY+latitudeHalf*eastY,c:blue,w:.85});
     const surfaceX=cx+r*Math.cos(latAngle);
