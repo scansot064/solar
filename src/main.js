@@ -683,7 +683,7 @@ export function createApp({ state, modules }) {
   return { run, switchLanguage, generatePDF, state };
 }
 
-const state = {
+const appState = {
   events: [],
   solar: {},
   selectedIndex: 0,
@@ -692,7 +692,7 @@ const state = {
 };
 
 const solarApp = createApp({
-  state,
+  state: appState,
   modules: { astro, earthView, i18n, template, pdf }
 });
 

@@ -60,11 +60,15 @@ export async function setLanguage(language) {
       throw new Error(`Could not load locales/${language}.json (${response.status})`);
     }
 
-    const dictionary = await response.json();
-    if (!dictionary || Array.isArray(dictionary) || typeof dictionary !== 'object') {
+    const fetchedDictionary = await response.json();
+    if (
+      !fetchedDictionary ||
+      Array.isArray(fetchedDictionary) ||
+      typeof fetchedDictionary !== 'object'
+    ) {
       throw new Error(`Invalid locale file: locales/${language}.json`);
     }
-    localeCache.set(language, dictionary);
+    localeCache.set(language, fetchedDictionary);
   }
 
   const dictionary = localeCache.get(language);
