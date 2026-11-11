@@ -1,4 +1,6 @@
 
+import {AXIAL_TILT,POLAR_CIRCLE_OFFSET,clamp,computeSun} from './src/astro.js';
+
 const $=id=>document.getElementById(id),rad=Math.PI/180;
 let LANG='es',T={},localeCache={};
 const f=(x,d=1)=>x.toFixed(d).replace('.',LANG==='es'?',':'.');
@@ -62,20 +64,9 @@ function updateCities(){
 
 function run(keep){
  const lat=+$('lat').value,R=+$('R').value,mode=$('mode').value,hmax=+$('hmax').value;
- const dt=new Date($('date').value+'T12:00:00Z');
- const N=Math.floor((dt-Date.UTC(dt.getUTCFullYear(),0,0))/864e5);
- const dec=23.44*Math.sin(360/365*(N-81)*rad);
- const sp=Math.sin(lat*rad),cp=Math.cos(lat*rad),sd=Math.sin(dec*rad),cd=Math.cos(dec*rad),td=Math.tan(dec*rad);
- const c=-Math.tan(lat*rad)*td;
- const H0=c>=1?0:c<=-1?180:Math.acos(c)/rad;
- const at=(t,z)=>{const H=15*(t-12),sH=Math.sin(H*rad),cH=Math.cos(H*rad);
-  const se=z?0:Math.max(-1,Math.min(1,sp*sd+cp*cd*cH)),e=Math.asin(se)/rad;
-  const A=(Math.atan2(sH,cH*sp-td*cp)/rad+540)%360;
-  return{t,H,se,e,A,z}};
- E=[];
- for(let t=0;t<24;t++){const o=at(t);if(o.e>0.05)E.push(o)}
- if(H0>0&&H0<180){E.push(Object.assign(at(12-H0/15,1),{tag:'sunrise'}),Object.assign(at(12+H0/15,1),{tag:'sunset'}))}
- E.sort((a,b)=>a.t-b.t);
+ const {dayNumber:N,declination:dec,dayAngle:H0,events}=computeSun(lat,$('date').value);
+ const sp=Math.sin(lat*rad),cp=Math.cos(lat*rad),sd=Math.sin(dec*rad),cd=Math.cos(dec*rad);
+ E=events;
  E.forEach(o=>{o.e0=o.e;o.A0=o.A;o.e=Math.round(o.e);o.A=Math.round(o.A)%360});
  E.forEach(o=>{const e=o.e*rad;
   if(mode=='cupula'){o.r=R*Math.cos(e);o.h=R*Math.sin(e)}
@@ -113,7 +104,7 @@ function steps(){
  <p>${tr('steps.declination',{day:N,value:f(dec,2)})}</p>
  <p>${tr('steps.hourAngle',{time:f(o.t,2),value:f(o.H)})}</p>
  <p>${tr('steps.elevation',{latitude:lat,sinLat:f(sp,3),sinDec:f(sd,3),cosLat:f(cp,3),cosDec:f(cd,3),cosHour:f(Math.cos(o.H*rad),3),sine:f(o.se,3),exact:f(o.e0),rounded:f(o.e,0)})}</p>
- <p>${den>1e-6?tr('steps.azimuth',{cosine:f(cA,3),angle:f(Math.acos(Math.max(-1,Math.min(1,cA)))/rad),afternoon:o.H>0?tr('steps.afternoon',{angle:f(Math.acos(Math.max(-1,Math.min(1,cA)))/rad)}):'',actual:f(o.A0),rounded:f(o.A,0)}):tr('steps.azimuthUndefined')}</p>`;
+ <p>${den>1e-6?tr('steps.azimuth',{cosine:f(cA,3),angle:f(Math.acos(clamp(cA,-1,1))/rad),afternoon:o.H>0?tr('steps.afternoon',{angle:f(Math.acos(clamp(cA,-1,1))/rad)}):'',actual:f(o.A0),rounded:f(o.A,0)}):tr('steps.azimuthUndefined')}</p>`;
  if(S.mode=='cupula')h+=`<p>${tr('steps.dome',{radius:R,elevation:f(o.e,0),sin:f(Math.sin(o.e*rad),3),height:f(o.h),cos:f(Math.cos(o.e*rad),3),distance:f(o.r),azimuth:f(o.A,0)})}</p>`;
  else h+=`<p>${tr('steps.pole',{radius:R,elevation:f(o.e,0),tan:f(Math.tan(o.e*rad),3),height:f(R*Math.tan(o.e*rad)),capped:o.cap?tr('steps.capped',{height:S.hmax}):''})}</p>`;
  $('steps').innerHTML=h;craft();
@@ -128,7 +119,7 @@ function earthSol(){
  const L=(a,b,x,w=1)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${x}" stroke-width="${w}"`;
  s+=L(P(90,r+10),P(-90,r+10),'var(--fg)',1.5)+'/>';
  s+=L(P(0),P(0,r,1),'var(--mu)')+'/>';
- [23.44,-23.44,66.56,-66.56].forEach(a=>s+=L(P(a),P(a,r,1),'var(--mu)')+' stroke-dasharray="3 3" stroke-opacity=".8"/>');
+ [AXIAL_TILT,-AXIAL_TILT,POLAR_CIRCLE_OFFSET,-POLAR_CIRCLE_OFFSET].forEach(a=>s+=L(P(a),P(a,r,1),'var(--mu)')+' stroke-dasharray="3 3" stroke-opacity=".8"/>');
  const n=P(90,r+19),sp=P(-90,r+19);
  s+=`<text x="${n[0]}" y="${n[1]+3}" text-anchor="middle" font-weight="700">N</text><text x="${sp[0]}" y="${sp[1]+3}" text-anchor="middle" font-weight="700">S</text>`;
  s+=`<text x="${cx+30}" y="${cy+r+22}" text-anchor="middle" fill="var(--mu)">${tr('svg.day')}</text><text x="${cx-30}" y="${cy+r+22}" text-anchor="middle" fill="var(--mu)">${tr('svg.night')}</text>`;
@@ -151,7 +142,7 @@ function earthTierra(){
  for(let k=-63;k<=63;k+=21){const m=Math.sqrt(r*r-k*k),px=-sy*k+m*sx,py=sx*k+m*sy;
   s+=`<line x1="${cx+px+140*sx}" y1="${cy-py-140*sy}" x2="${cx+px}" y2="${cy-py}" stroke="var(--ac)" stroke-opacity=".6"/>`}
  s+=`<line x1="${cx}" y1="${cy-r-8}" x2="${cx}" y2="${cy+r+8}" stroke="var(--fg)" stroke-width="1.5"/><line x1="${cx}" y1="${cy}" x2="${cx+r}" y2="${cy}" stroke="var(--mu)"/>`;
- [23.44,-23.44,66.56,-66.56].forEach(a=>{const q=P(a);s+=`<line x1="${cx}" y1="${q[1]}" x2="${q[0]}" y2="${q[1]}" stroke="var(--mu)" stroke-dasharray="3 3" stroke-opacity=".8"/>`});
+ [AXIAL_TILT,-AXIAL_TILT,POLAR_CIRCLE_OFFSET,-POLAR_CIRCLE_OFFSET].forEach(a=>{const q=P(a);s+=`<line x1="${cx}" y1="${q[1]}" x2="${q[0]}" y2="${q[1]}" stroke="var(--mu)" stroke-dasharray="3 3" stroke-opacity=".8"/>`});
  s+=`<text x="${cx}" y="${cy-r-11}" text-anchor="middle" font-weight="700">N</text><text x="${cx}" y="${cy+r+19}" text-anchor="middle" font-weight="700">S</text>`;
  const th=lat*rad,[ax,ay]=P(lat),[ox,oy]=P(lat,r+12);
  if(Math.cos(th-d*rad)>0)s+=`<line x1="${ax}" y1="${ay}" x2="${ax+140*sx}" y2="${ay-140*sy}" stroke="var(--ac)" stroke-width="1.6"/>`;
