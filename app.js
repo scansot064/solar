@@ -1,15 +1,15 @@
 
-import {clamp,computeSun} from './src/astro.js';
-import {renderEarthSol,renderEarthTierra} from './src/earthView.js';
-import {getLanguage,getSavedLanguage,getTranslation,setLanguage,tr} from './src/i18n.js';
-import {layoutTemplate} from './src/template.js';
-import {genPDF,renderPdfPreviewSvg} from './src/pdf.js';
-
-const $=id=>document.getElementById(id),rad=Math.PI/180;
+export function createApp({state,modules}) {
+ const {clamp,computeSun}=modules.astro;
+ const {renderEarthSol,renderEarthTierra}=modules.earthView;
+ const {getLanguage,getSavedLanguage,getTranslation,setLanguage,tr}=modules.i18n;
+ const {layoutTemplate}=modules.template;
+ const {genPDF,renderPdfPreviewSvg}=modules.pdf;
+ const $=id=>document.getElementById(id),rad=Math.PI/180;
 const f=(x,d=1)=>x.toFixed(d).replace('.',getLanguage()==='es'?',':'.');
 const tf=t=>{let h=Math.floor(t),m=Math.round((t-h)*60);if(m==60){h++;m=0}return h+':'+String(m).padStart(2,'0')};
-let E=[],S={},sel=0;
-let CIUDADES=null; // se carga desde ciudades.json: [{"nombre":..., "lat":...}], ordenadas por fama
+let E=state.events,S=state.solar,sel=state.selectedIndex;
+let CIUDADES=state.cities,EV=state.earthView;
 function setTheme(theme){
  if(!['light','dark'].includes(theme))throw new Error(`Unsupported theme: ${theme}`);
  document.documentElement.dataset.theme=theme;
@@ -37,11 +37,13 @@ function run(keep){
  const {dayNumber:N,declination:dec,dayAngle:H0,events}=computeSun(lat,$('date').value);
  const sp=Math.sin(lat*rad),cp=Math.cos(lat*rad),sd=Math.sin(dec*rad),cd=Math.cos(dec*rad);
  E=events;
+ state.events=E;
  E.forEach(o=>{o.e0=o.e;o.A0=o.A;o.e=Math.round(o.e);o.A=Math.round(o.A)%360});
  E.forEach(o=>{const e=o.e*rad;
   if(mode=='cupula'){o.r=R*Math.cos(e);o.h=R*Math.sin(e)}
   else{o.r=R;o.h=R*Math.tan(e);o.cap=o.h>hmax;if(o.cap)o.h=hmax}});
  S={lat,R,mode,N,dec,sp,cp,sd,cd,H0,hmax};
+ state.solar=S;
  $('hmax-label').hidden=mode!=='poste';
  $('sum').innerHTML=!E.length?tr('summary.polarNight'):
   (H0==180?tr('summary.polarDay'):'')+tr('summary.declination',{value:f(dec)})+' · '+tr('summary.daylight',{value:f(H0/7.5)});
@@ -49,6 +51,7 @@ function run(keep){
  updateCities();
  if(!keep||sel>=E.length){sel=0;E.forEach((o,i)=>{if(o.e>E[sel].e)sel=i})}
  draw();tplUpdate();
+ state.selectedIndex=sel;
 }
 function draw(){
  if(!E.length){$('plan').innerHTML='';$('tab').innerHTML='';$('steps').innerHTML='';$('craft').innerHTML='';return}
@@ -83,15 +86,19 @@ function steps(){
 function earthSol(){
  $('earth').innerHTML=renderEarthSol({latitude:+$('lat').value,declination:S.dec,helpers:{translate:tr,formatNumber:f}});
 }
-let EV='sol';
 function earth(){EV=='sol'?earthSol():earthTierra()}
 function earthTierra(){
  $('earth').innerHTML=renderEarthTierra({latitude:+$('lat').value,declination:S.dec,helpers:{translate:tr,formatNumber:f}});
 }
 let drag=0;const eb=$('earth');
+let latitudeUpdateTimer;
+function scheduleLatitudeUpdate(){
+ clearTimeout(latitudeUpdateTimer);
+ latitudeUpdateTimer=setTimeout(()=>{run(0);latitudeUpdateTimer=null},120);
+}
 const pick=e=>{const so=EV=='sol',cx=so?95:70,b=eb.querySelector('svg').getBoundingClientRect(),x=(e.clientX-b.left)*260/b.width-cx,y=100-(e.clientY-b.top)*200/b.height;
  const a=Math.atan2(y,so?x:Math.max(x,0))/rad+(so?S.dec:0);
- $('lat').value=Math.max(-90,Math.min(90,Math.round(a)));run(0)};
+ $('lat').value=Math.max(-90,Math.min(90,Math.round(a)));scheduleLatitudeUpdate()};
 eb.addEventListener('pointerdown',e=>{drag=1;eb.setPointerCapture(e.pointerId);pick(e)});
 eb.addEventListener('pointermove',e=>{if(drag)pick(e)});
 addEventListener('pointerup',()=>drag=0);
@@ -127,14 +134,17 @@ function tplUpdate(){const L=layoutTemplate(templateInput());
  $('tprev').innerHTML=renderPdfPreviewSvg(L)}
 $('paper').addEventListener('input',tplUpdate);
 $('crop-circle').addEventListener('change',tplUpdate);
-$('bpdf').addEventListener('click',()=>genPDF({open:false,template:templateInput(),latitude:S.lat,date:$('date').value,translate:tr}));
-$('bpdfo').addEventListener('click',()=>genPDF({open:true,template:templateInput(),latitude:S.lat,date:$('date').value,translate:tr}));
-$('tab').addEventListener('click',e=>{const r=e.target.closest('tr[data-i]');if(r){sel=+r.dataset.i;draw()}});
+$('bpdf').addEventListener('click',()=>generatePDF(false));
+$('bpdfo').addEventListener('click',()=>generatePDF(true));
+function generatePDF(open){
+ genPDF({open,template:templateInput(),latitude:S.lat,date:$('date').value,translate:tr});
+}
+$('tab').addEventListener('click',e=>{const r=e.target.closest('tr[data-i]');if(r){sel=+r.dataset.i;state.selectedIndex=sel;draw()}});
 $('tab').addEventListener('keydown',e=>{
  if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-i]')){e.preventDefault();e.target.click()}
 });
 $('language').addEventListener('change',async e=>{
- try{await setLanguage(e.target.value);run(1)}
+ try{await switchLanguage(e.target.value)}
  catch(error){
   console.error(error);
   $('language').value=getLanguage();
@@ -142,16 +152,29 @@ $('language').addEventListener('change',async e=>{
   $('status').hidden=false;
  }
 });
+async function switchLanguage(language){
+ await setLanguage(language);
+ run(1);
+}
 $('theme').addEventListener('change',e=>setTheme(e.target.value));
 $('rnd').addEventListener('click',()=>{
+ clearTimeout(latitudeUpdateTimer);
+ latitudeUpdateTimer=null;
  const year=new Date().getFullYear(),start=Date.UTC(year,0,1),days=(Date.UTC(year+1,0,1)-start)/864e5;
  $('lat').value=Math.floor(Math.random()*181)-90;
  $('date').value=new Date(start+Math.floor(Math.random()*days)*864e5).toISOString().slice(0,10);
  run(0);
 });
-['lat','date','R','mode','hmax'].forEach(i=>$(i).addEventListener('input',()=>run(0)));
+$('lat').addEventListener('input',scheduleLatitudeUpdate);
+$('lat').addEventListener('change',()=>{
+ clearTimeout(latitudeUpdateTimer);
+ latitudeUpdateTimer=null;
+ run(0);
+});
+['date','R','mode','hmax'].forEach(i=>$(i).addEventListener('input',()=>run(0)));
 document.querySelectorAll('#etg button').forEach((b,_,all)=>b.addEventListener('click',()=>{
  EV=b.dataset.v;
+ state.earthView=EV;
  all.forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',String(x===b))});
  earth();
 }));
@@ -166,10 +189,12 @@ setLanguage(getSavedLanguage()).then(()=>{
   return response.json();
  }).then(data=>{
   if(!Array.isArray(data))throw new Error('ciudades.json must contain an array');
-  CIUDADES=data;updateCities();earth();
- }).catch(error=>{console.error(error);CIUDADES=[];updateCities();earth()});
+  CIUDADES=data;state.cities=CIUDADES;updateCities();earth();
+ }).catch(error=>{console.error(error);CIUDADES=[];state.cities=CIUDADES;updateCities();earth()});
 }).catch(error=>{
  console.error(error);
  $('status').textContent=error.message;
  $('status').hidden=false;
 });
+ return{run,switchLanguage,generatePDF,state};
+}
