@@ -12,6 +12,12 @@ function boxOverlaps(a, b) {
   return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
 }
 
+function boxIntersectsCircle(box, centerX, centerY, radius) {
+  const closestX = Math.max(box[0], Math.min(centerX, box[2]));
+  const closestY = Math.max(box[1], Math.min(centerY, box[3]));
+  return (closestX - centerX) ** 2 + (closestY - centerY) ** 2 <= radius ** 2;
+}
+
 function formatLabelLines(event, scale, { formatTime, formatNumber, translate }) {
   const lines = [formatTime(event.t)];
   if (event.z) {
@@ -90,6 +96,7 @@ export function findHeaderBox({
   height,
   diagramBoxes,
   tableBoxes,
+  fixedBox,
   radius,
   margin,
   cropCircle,
@@ -165,27 +172,47 @@ export function findHeaderBox({
     );
   });
 
-  const candidates = [];
-  for (const left of xCoordinates) {
-    for (const right of xCoordinates) {
-      if (right - left < 52) {
-        continue;
-      }
-      for (const top of yCoordinates) {
-        for (const bottom of yCoordinates) {
-          const overlapsObstacle = obstacles.some(
-            box => left < box[2] && right > box[0] && top < box[3] && bottom > box[1]
-          );
-          if (bottom - top >= 25 && !overlapsObstacle) {
-            candidates.push({ x: left, y: top, w: right - left, h: bottom - top });
+  let candidates = fixedBox ? [fixedBox] : [];
+  if (!fixedBox) {
+    candidates = [];
+    for (const left of xCoordinates) {
+      for (const right of xCoordinates) {
+        if (right - left < 52) {
+          continue;
+        }
+        for (const top of yCoordinates) {
+          for (const bottom of yCoordinates) {
+            const overlapsObstacle = obstacles.some(
+              box => left < box[2] && right > box[0] && top < box[3] && bottom > box[1]
+            );
+            if (bottom - top >= 25 && !overlapsObstacle) {
+              candidates.push({ x: left, y: top, w: right - left, h: bottom - top });
+            }
           }
         }
       }
     }
+    candidates.sort(
+      (first, second) =>
+        first.x + first.y - (second.x + second.y) ||
+        first.y - second.y ||
+        first.x - second.x ||
+        second.h * second.w - first.h * first.w
+    );
   }
-  candidates.sort((first, second) => first.x - second.x || second.h * first.w - first.h * second.w);
 
   for (const box of candidates) {
+    const overlapsObstacle = obstacles.some(
+      obstacle =>
+        box.x < obstacle[2] &&
+        box.x + box.w > obstacle[0] &&
+        box.y < obstacle[3] &&
+        box.y + box.h > obstacle[1]
+    );
+    if (overlapsObstacle || box.w < 52 || box.h < 25) {
+      continue;
+    }
+
     const lines = texts.map(item => ({
       ...item,
       lines: wrapText(
@@ -365,8 +392,123 @@ function intersectsLayout(rectangle, occupancy, offsetX, offsetY) {
   );
 }
 
-function findPlacement({ width, height, columns, radius, scale, force, context }) {
-  const { state, options, helpers, geometry, margin, cellWidth, cardinalLabels } = context;
+function createFixedLayout({ width, height, portrait, context }) {
+  const { state, margin, cellWidth } = context;
+  const gap = 4;
+  const tableAreaWidth = width - margin - (width / 2 + gap);
+  let columns = 1;
+  let groupWidth = cellWidth;
+  let groupGap = 6;
+
+  for (const candidateColumns of [3, 2]) {
+    const candidateGroupWidth =
+      (tableAreaWidth - gap * (candidateColumns - 1)) / candidateColumns;
+    const minGroupWidth = candidateColumns === 3 ? 50 : 42;
+    if (candidateGroupWidth >= minGroupWidth) {
+      columns = candidateColumns;
+      groupWidth = Math.min(64, candidateGroupWidth);
+      groupGap = gap;
+      break;
+    }
+  }
+
+  const rowHeight = columns > 1 ? 3 : 4.2;
+  const rowCount = Math.ceil(state.events.length / columns);
+  const tableWidth = columns * groupWidth + (columns - 1) * groupGap;
+  const tableHeight = (rowCount + 1) * rowHeight;
+  const tableX = width - margin - tableWidth;
+  const tableY = margin;
+  const tableBoxes = Array.from({ length: columns }, (_, column) => {
+    const columnX = tableX + column * (groupWidth + groupGap);
+    return [columnX - 1, tableY, columnX + groupWidth + 1, tableY + tableHeight];
+  });
+  const headerRight = Math.min(width / 2 - gap, tableX - gap);
+  const headerBox = {
+    x: margin,
+    y: margin,
+    w: headerRight - margin,
+    h: Math.max(60, tableHeight + 6)
+  };
+  const globeRadius = 40 * 0.32;
+  const globeWidth = 2 * globeRadius + 12;
+  const globeHeight = 2 * globeRadius + 16;
+  const globeBox = [
+    width - margin - globeWidth,
+    height - 20 - globeHeight,
+    width - margin,
+    height - 20
+  ];
+  const topContentBottom = headerBox.y + headerBox.h;
+  let diagramBox;
+
+  if (portrait) {
+    const diagramTop = topContentBottom + 6;
+    const diagramBottom = globeBox[1] - 6;
+    const side = Math.max(
+      0,
+      Math.min(160, width - margin * 2, diagramBottom - diagramTop)
+    );
+    diagramBox = {
+      x: (width - side) / 2,
+      y: diagramTop + (diagramBottom - diagramTop - side) / 2,
+      w: side,
+      h: side
+    };
+  } else {
+    const diagramWidth = Math.min(280, width - margin * 2);
+    const diagramHeight = Math.min(160, height - margin * 2);
+    diagramBox = {
+      x: (width - diagramWidth) / 2,
+      y: (height - diagramHeight) / 2,
+      w: diagramWidth,
+      h: diagramHeight
+    };
+  }
+
+  return {
+    width,
+    height,
+    columns,
+    rowCount,
+    tableX,
+    tableY,
+    tableWidth,
+    tableHeight,
+    groupWidth,
+    groupGap,
+    rowHeight,
+    tableBoxes,
+    tableRectangle: [
+      tableX - 3,
+      tableY - 3,
+      tableX + tableWidth + 3,
+      tableY + tableHeight + 3
+    ],
+    headerBox,
+    globeBox,
+    diagramBox
+  };
+}
+
+function findPlacement({ radius, scale, fixedLayout, context }) {
+  const { state, options, helpers, geometry, cardinalLabels } = context;
+  const {
+    width,
+    height,
+    columns,
+    rowCount,
+    tableX,
+    tableY,
+    tableWidth,
+    tableHeight,
+    groupWidth,
+    groupGap,
+    rowHeight,
+    tableBoxes,
+    tableRectangle,
+    headerBox,
+    diagramBox
+  } = fixedLayout;
   const occupancy = createOccupancy({
     state,
     helpers,
@@ -375,175 +517,83 @@ function findPlacement({ width, height, columns, radius, scale, force, context }
     radius,
     scale
   });
-  const bounds = occupancy.bounds;
-  const placementBounds = options.cropCircle ? occupancy.pointBounds : bounds;
-  const boxWidth = placementBounds[2] - placementBounds[0];
-  const boxHeight = placementBounds[3] - placementBounds[1];
-  const availableWidth = width - 2 * margin;
-  const top = margin;
-  const contentBottom = height - margin - (options.cropCircle ? 14 : 0);
-  const availableHeight = contentBottom - top;
-  const exceedsBounds =
-    !options.cropCircle &&
-    (bounds[2] - bounds[0] > availableWidth ||
-      bounds[3] - bounds[1] > height - margin - top);
-  if (exceedsBounds || boxWidth > availableWidth || boxHeight > availableHeight) {
+  const bounds = options.cropCircle ? occupancy.pointBounds : occupancy.bounds;
+  const boxWidth = bounds[2] - bounds[0];
+  const boxHeight = bounds[3] - bounds[1];
+  if (!options.cropCircle && (boxWidth > diagramBox.w || boxHeight > diagramBox.h)) {
     return null;
   }
 
-  const groupWidth = columns > 1 ? 64 : cellWidth;
-  const groupGap = columns > 1 ? 4 : 6;
-  const rowHeight = columns > 1 ? 3 : 4.2;
-  const rowCount = Math.ceil(state.events.length / columns);
-  const tableWidth = columns * groupWidth + (columns - 1) * groupGap;
-  const tableHeight = (rowCount + 1) * rowHeight;
-  const offsets = [];
-
-  for (const fractionY of [0, 0.5, 1]) {
-    for (const fractionX of [0, 0.25, 0.5, 0.75, 1]) {
-      offsets.push([
-        margin + fractionX * (availableWidth - boxWidth) - placementBounds[0],
-        top + fractionY * (availableHeight - boxHeight) - placementBounds[1]
-      ]);
-    }
+  const offsetX = diagramBox.x + (diagramBox.w - boxWidth) / 2 - bounds[0];
+  const offsetY = geometry.fullCircle
+    ? diagramBox.y + (diagramBox.h - boxHeight) / 2 - bounds[1]
+    : diagramBox.y + diagramBox.h - bounds[3];
+  const header = findHeaderBox({
+    width,
+    height,
+    diagramBoxes: [],
+    tableBoxes,
+    fixedBox: headerBox,
+    radius,
+    margin: context.margin,
+    cropCircle: options.cropCircle,
+    state,
+    options,
+    helpers
+  });
+  if (!header || intersectsLayout(tableRectangle, occupancy, offsetX, offsetY)) {
+    return null;
   }
 
-  let best = null;
-  for (const [offsetX, offsetY] of offsets) {
-    const northBox = geometry.includesNorth
-      ? [offsetX - 3.5, offsetY - radius - 9.5, offsetX + 3.5, offsetY - radius - 2.5]
-      : null;
-    const northVisible =
-      northBox &&
-      northBox[0] >= margin &&
-      northBox[1] >= (options.cropCircle ? margin : 0) &&
-      northBox[2] <= width - margin &&
-      northBox[3] <= (options.cropCircle ? contentBottom : height - margin);
-    const north = northVisible ? northBox : null;
-    if (!options.cropCircle && northBox && !northVisible) {
-      continue;
-    }
-
-    const slots = [
-      [width - margin - tableWidth, offsetY + bounds[1] + 9],
-      [margin, offsetY + bounds[1] + 9],
-      [width - margin - tableWidth, height - margin - tableHeight],
-      [margin, height - margin - tableHeight]
+  const headerTextBoxes = header.items.map(item => {
+    const textWidth = item.s.length * item.pt * 0.19;
+    return [
+      item.x - 1,
+      item.y - item.pt * 0.4,
+      item.x + textWidth + 1,
+      item.y + item.pt * 0.08
     ];
-    const nightSlots = [];
-    if (!geometry.fullCircle) {
-      for (const distance of [0.47, 0.45, 0.43, 0.5]) {
-        for (const cross of [0, -0.08, 0.08]) {
-          const x =
-            offsetX +
-            Math.sin(geometry.gapCenter) * radius * distance +
-            Math.cos(geometry.gapCenter) * radius * cross;
-          const y =
-            offsetY -
-            Math.cos(geometry.gapCenter) * radius * distance +
-            Math.sin(geometry.gapCenter) * radius * cross;
-          nightSlots.push([x - tableWidth / 2, y - tableHeight / 2]);
-        }
-      }
-    }
-    slots.unshift(...nightSlots);
-
-    const xCandidates = [
-      margin,
-      width / 2 - tableWidth / 2,
-      width - margin - tableWidth,
-      offsetX + bounds[0],
-      offsetX + (bounds[0] + bounds[2] - tableWidth) / 2,
-      offsetX + bounds[2] - tableWidth
-    ];
-    const yCandidates = [
-      top,
-      (top + height - margin - tableHeight) / 2,
-      height - margin - tableHeight,
-      offsetY + bounds[1],
-      offsetY + (bounds[1] + bounds[3] - tableHeight) / 2,
-      offsetY + bounds[3] - tableHeight
-    ];
-    xCandidates.forEach(x => yCandidates.forEach(y => slots.push([x, y])));
-
-    for (const [slotIndex, [tableX, tableY]] of slots.entries()) {
-      const outsidePage =
-        tableX < margin ||
-        tableX + tableWidth > width - margin ||
-        tableY < top ||
-        tableY + tableHeight > contentBottom;
-      if (outsidePage) {
-        continue;
-      }
-
-      const tableRectangle = [
-        tableX - 3,
-        tableY - 3,
-        tableX + tableWidth + 3,
-        tableY + tableHeight + 3
-      ];
-      if (!force && intersectsLayout(tableRectangle, occupancy, offsetX, offsetY)) {
-        continue;
-      }
-
-      const diagramBounds = options.cropCircle ? occupancy.pointBounds : bounds;
-      const diagramBoxes = [[
-        diagramBounds[0] + offsetX,
-        diagramBounds[1] + offsetY,
-        diagramBounds[2] + offsetX,
-        diagramBounds[3] + offsetY
-      ]];
-      const tableBoxes = Array.from({ length: columns }, (_, column) => {
-        const columnX = tableX + column * (groupWidth + groupGap);
-        return [
-          columnX - 1,
-          tableY,
-          columnX + groupWidth + 1,
-          tableY + tableHeight
-        ];
-      });
-      const header = findHeaderBox({
-        width,
-        height,
-        diagramBoxes,
-        tableBoxes: north ? [...tableBoxes, north] : tableBoxes,
-        radius,
-        margin,
-        cropCircle: options.cropCircle,
-        state,
-        options,
-        helpers
-      });
-      if (!header) {
-        continue;
-      }
-
-      const candidate = {
-        offsetX,
-        offsetY,
-        tableX,
-        tableY,
-        columns,
-        rowCount,
-        tableWidth,
-        tableHeight,
-        groupWidth,
-        groupGap,
-        rowHeight,
-        night: slotIndex < nightSlots.length,
-        header,
-        occupancy
-      };
-      const hasBetterHeader = !best || header.items[0].x < best.header.items[0].x;
-      const sameHeaderPosition =
-        best && header.items[0].x === best.header.items[0].x;
-      if (hasBetterHeader || (sameHeaderPosition && candidate.night && !best.night)) {
-        best = candidate;
-      }
-    }
+  });
+  headerTextBoxes.push(
+    [
+      header.scale.x1,
+      header.scale.y1 - 0.5,
+      header.scale.x2,
+      header.scale.y2 + 0.5
+    ],
+    [
+      header.scale.x2 - header.scale.label.length * 6.5 * 0.19,
+      header.scale.labelY - 6.5 * 0.4,
+      header.scale.x2,
+      header.scale.labelY + 6.5 * 0.08
+    ]
+  );
+  if (
+    headerTextBoxes.some(box =>
+      intersectsLayout(box, occupancy, offsetX, offsetY)
+    )
+  ) {
+    return null;
   }
 
-  return best;
+  return {
+    offsetX,
+    offsetY,
+    tableX,
+    tableY,
+    columns,
+    rowCount,
+    tableWidth,
+    tableHeight,
+    groupWidth,
+    groupGap,
+    rowHeight,
+    insideCircle: false,
+    header,
+    occupancy,
+    diagramBox,
+    fixedLayout
+  };
 }
 
 function lineIntersectsBox(x1, y1, x2, y2, box) {
@@ -624,127 +674,142 @@ function itemTouchesBox(box, item) {
   return false;
 }
 
-export function drawGlobe({ items, width, height, state, helpers }) {
+export function drawGlobe({
+  items,
+  width,
+  height,
+  state,
+  helpers,
+  diagramCircle,
+  margin = 10,
+  outsideCircleOnly = false
+}) {
   const { formatNumber } = helpers;
 
   for (let diameter = 40; diameter >= 28; diameter -= 2) {
     const radius = diameter * 0.32;
     const globeWidth = 2 * radius + 12;
     const globeHeight = 2 * radius + 16;
+    const x = width - margin - globeWidth;
+    const y = height - 20 - globeHeight;
+    const box = [x, y, x + globeWidth, y + globeHeight];
 
-    for (let y = height - 20 - globeHeight; y >= 8; y -= 4) {
-      for (let x = 8; x <= width - globeWidth - 8; x += 4) {
-        const box = [x, y, x + globeWidth, y + globeHeight];
-        if (items.some(item => itemTouchesBox(box, item))) {
-          continue;
-        }
+    if (
+      outsideCircleOnly &&
+      diagramCircle &&
+      boxIntersectsCircle(box, diagramCircle.x, diagramCircle.y, diagramCircle.radius)
+    ) {
+      continue;
+    }
+    if (items.some(item => itemTouchesBox(box, item))) {
+      continue;
+    }
 
-        const centerX = x + radius + 2;
-        const centerY = y + radius + 4;
-        const declinationAngle = state.declination * RAD;
-        const latitudeAngle = (state.latitude - state.declination) * RAD;
-        const latitudeY = centerY - radius * Math.sin(latitudeAngle);
-        const stroke = [75, 91, 105];
-        const equator = [177, 185, 192];
-        const blue = [32, 121, 174];
-        const sun = [220, 151, 47];
+    const centerX = x + radius + 2;
+    const centerY = y + radius + 4;
+    const declinationAngle = state.declination * RAD;
+    const latitudeAngle = (state.latitude - state.declination) * RAD;
+    const latitudeY = centerY - radius * Math.sin(latitudeAngle);
+    const stroke = [75, 91, 105];
+    const equator = [177, 185, 192];
+    const blue = [32, 121, 174];
+    const sun = [220, 151, 47];
 
-        items.push(
-          { k: 'c', x: centerX, y: centerY, r: radius, c: [247, 250, 252], fill: 1 },
-          { k: 'c', x: centerX, y: centerY, r: radius, c: stroke, w: 0.45 }
+    items.push(
+      { k: 'c', x: centerX, y: centerY, r: radius, c: [247, 250, 252], fill: 1 },
+      { k: 'c', x: centerX, y: centerY, r: radius, c: stroke, w: 0.45 }
+    );
+
+    const eastX = Math.cos(declinationAngle);
+    const eastY = Math.sin(declinationAngle);
+    const northX = Math.sin(declinationAngle);
+    const northY = -Math.cos(declinationAngle);
+    if (Math.abs(state.latitude) > 1e-6) {
+      items.push({
+        k: 'l',
+        x1: centerX - radius * eastX,
+        y1: centerY - radius * eastY,
+        x2: centerX + radius * eastX,
+        y2: centerY + radius * eastY,
+        c: equator,
+        w: 0.25
+      });
+    }
+    items.push({
+      k: 'l',
+      x1: centerX - (radius + 2) * northX,
+      y1: centerY - (radius + 2) * northY,
+      x2: centerX + (radius + 2) * northX,
+      y2: centerY + (radius + 2) * northY,
+      c: equator,
+      w: 0.2
+    });
+
+    const latitudeOffset = radius * Math.sin(state.latitude * RAD);
+    const latitudeHalf = radius * Math.cos(state.latitude * RAD);
+    items.push({
+      k: 'l',
+      x1: centerX + latitudeOffset * northX - latitudeHalf * eastX,
+      y1: centerY + latitudeOffset * northY - latitudeHalf * eastY,
+      x2: centerX + latitudeOffset * northX + latitudeHalf * eastX,
+      y2: centerY + latitudeOffset * northY + latitudeHalf * eastY,
+      c: blue,
+      w: 0.85
+    });
+
+    const surfaceX = centerX + radius * Math.cos(latitudeAngle);
+    items.push(
+      { k: 'c', x: surfaceX, y: latitudeY, r: 1.35, c: [255, 255, 255], fill: 1 },
+      { k: 'c', x: surfaceX, y: latitudeY, r: 0.85, c: blue, fill: 1 }
+    );
+
+    if (Math.cos(latitudeAngle) > 0) {
+      const sunX = x + globeWidth - 3.4;
+      for (const offset of [-3.2, 0, 3.2]) {
+        const rayY = Math.max(
+          centerY - radius * 0.88,
+          Math.min(centerY + radius * 0.88, latitudeY + offset)
         );
-
-        const eastX = Math.cos(declinationAngle);
-        const eastY = Math.sin(declinationAngle);
-        const northX = Math.sin(declinationAngle);
-        const northY = -Math.cos(declinationAngle);
-        if (Math.abs(state.latitude) > 1e-6) {
-          items.push({
-            k: 'l',
-            x1: centerX - radius * eastX,
-            y1: centerY - radius * eastY,
-            x2: centerX + radius * eastX,
-            y2: centerY + radius * eastY,
-            c: equator,
-            w: 0.25
-          });
-        }
+        const rayEdge =
+          centerX + Math.sqrt(Math.max(0, radius * radius - (rayY - centerY) ** 2));
         items.push({
           k: 'l',
-          x1: centerX - (radius + 2) * northX,
-          y1: centerY - (radius + 2) * northY,
-          x2: centerX + (radius + 2) * northX,
-          y2: centerY + (radius + 2) * northY,
-          c: equator,
-          w: 0.2
+          x1: rayEdge,
+          y1: rayY,
+          x2: sunX - 1.8,
+          y2: rayY,
+          c: sun,
+          w: 0.3
         });
+      }
 
-        const latitudeOffset = radius * Math.sin(state.latitude * RAD);
-        const latitudeHalf = radius * Math.cos(state.latitude * RAD);
+      items.push({ k: 'c', x: sunX, y: latitudeY, r: 1.6, c: sun, fill: 1 });
+      for (let angle = 0; angle < 360; angle += 45) {
+        const radians = angle * RAD;
         items.push({
           k: 'l',
-          x1: centerX + latitudeOffset * northX - latitudeHalf * eastX,
-          y1: centerY + latitudeOffset * northY - latitudeHalf * eastY,
-          x2: centerX + latitudeOffset * northX + latitudeHalf * eastX,
-          y2: centerY + latitudeOffset * northY + latitudeHalf * eastY,
-          c: blue,
-          w: 0.85
+          x1: sunX + 2.1 * Math.sin(radians),
+          y1: latitudeY - 2.1 * Math.cos(radians),
+          x2: sunX + 3.1 * Math.sin(radians),
+          y2: latitudeY - 3.1 * Math.cos(radians),
+          c: sun,
+          w: 0.35
         });
-
-        const surfaceX = centerX + radius * Math.cos(latitudeAngle);
-        items.push(
-          { k: 'c', x: surfaceX, y: latitudeY, r: 1.35, c: [255, 255, 255], fill: 1 },
-          { k: 'c', x: surfaceX, y: latitudeY, r: 0.85, c: blue, fill: 1 }
-        );
-
-        if (Math.cos(latitudeAngle) > 0) {
-          const sunX = x + globeWidth - 3.4;
-          for (const offset of [-3.2, 0, 3.2]) {
-            const rayY = Math.max(
-              centerY - radius * 0.88,
-              Math.min(centerY + radius * 0.88, latitudeY + offset)
-            );
-            const rayEdge =
-              centerX + Math.sqrt(Math.max(0, radius * radius - (rayY - centerY) ** 2));
-            items.push({
-              k: 'l',
-              x1: rayEdge,
-              y1: rayY,
-              x2: sunX - 1.8,
-              y2: rayY,
-              c: sun,
-              w: 0.3
-            });
-          }
-
-          items.push({ k: 'c', x: sunX, y: latitudeY, r: 1.6, c: sun, fill: 1 });
-          for (let angle = 0; angle < 360; angle += 45) {
-            const radians = angle * RAD;
-            items.push({
-              k: 'l',
-              x1: sunX + 2.1 * Math.sin(radians),
-              y1: latitudeY - 2.1 * Math.cos(radians),
-              x2: sunX + 3.1 * Math.sin(radians),
-              y2: latitudeY - 3.1 * Math.cos(radians),
-              c: sun,
-              w: 0.35
-            });
-          }
-        }
-
-        items.push({
-          k: 't',
-          x: centerX,
-          y: centerY + radius + 6,
-          s: `${formatNumber(Math.abs(state.latitude), 0)}º ${state.latitude >= 0 ? 'N' : 'S'}`,
-          pt: 7.5,
-          c: blue,
-          an: 'middle'
-        });
-        return;
       }
     }
+
+    items.push({
+      k: 't',
+      x: centerX,
+      y: centerY + radius + 6,
+      s: `${formatNumber(Math.abs(state.latitude), 0)}º ${state.latitude >= 0 ? 'N' : 'S'}`,
+      pt: 7.5,
+      c: blue,
+      an: 'middle'
+    });
+    return true;
   }
+  return false;
 }
 
 function cacheKey(state, options, helpers) {
@@ -766,77 +831,39 @@ function findBestLayout({
   portraitWidth,
   portraitHeight,
   originalRadius,
-  cropCircle,
   context
 }) {
-  let best = null;
+  const portrait = context.geometry.fullCircle;
+  const width = portrait ? portraitWidth : portraitHeight;
+  const height = portrait ? portraitHeight : portraitWidth;
+  const fixedLayout = createFixedLayout({ width, height, portrait, context });
+  const maxRadius = Math.min(
+    originalRadius * 10,
+    fixedLayout.diagramBox.w / 2,
+    portrait ? fixedLayout.diagramBox.h / 2 : fixedLayout.diagramBox.h
+  );
 
-  for (const landscape of [0, 1]) {
-    for (const columns of [1, 2, 3]) {
-      const width = landscape ? portraitHeight : portraitWidth;
-      const height = landscape ? portraitWidth : portraitHeight;
-      const maxRadius = cropCircle
-        ? 500
-        : Math.min(
-            originalRadius * 10,
-            Math.max(portraitWidth, portraitHeight) - context.margin * 2
-          );
-      let maximum = 0;
-
-      for (let candidateRadius = Math.floor(maxRadius / 5) * 5; candidateRadius >= 15; candidateRadius -= 5) {
-        const placement = findPlacement({
-          width,
-          height,
-          columns,
-          radius: candidateRadius,
-          scale: 1,
-          context
-        });
-        if (placement) {
-          maximum = candidateRadius;
-          break;
-        }
-      }
-      if (!maximum) {
-        continue;
-      }
-
-      const selectedRadius = Math.max(3, Math.floor((maximum / 10) * 2) / 2);
-      const placement = findPlacement({
+  for (let radius = Math.floor(maxRadius / 5) * 5; radius >= 30; radius -= 5) {
+    const pageRadius = radius / 10;
+    const placement = findPlacement({
+      radius,
+      scale: pageRadius / originalRadius,
+      fixedLayout,
+      context
+    });
+    if (placement) {
+      return {
+        ...fixedLayout,
         width,
         height,
-        columns,
-        radius: selectedRadius * 10,
-        scale: 1,
-        context
-      });
-      const candidate = {
-        width,
-        height,
-        landscape,
-        columns,
-        radius: selectedRadius,
-        night: placement.night
+        landscape: Number(!portrait),
+        radius: pageRadius,
+        placement
       };
-      const largerRadius = !best || candidate.radius > best.radius;
-      const preferredNightPlacement =
-        best &&
-        candidate.radius === best.radius &&
-        candidate.night &&
-        !best.night;
-      if (largerRadius || preferredNightPlacement) {
-        best = candidate;
-      }
     }
   }
 
-  return best || {
-    width: portraitWidth,
-    height: portraitHeight,
-    landscape: 0,
-    columns: 2,
-    radius: 3
-  };
+  return null;
 }
 
 function createTableItems({ placement, state, helpers, isDome, scale, cellWidth }) {
@@ -844,7 +871,8 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
   const black = [0, 0, 0];
   const gray = [140, 140, 140];
   const lightGray = [165, 165, 165];
-  const tableFont = placement.columns > 1 ? 6.5 : 7.5;
+  const tableFont =
+    placement.columns === 1 ? 7.5 : placement.groupWidth < 50 ? 5.5 : 6.5;
   const columnValues = isDome ? [0, 33, 49, 63, 78] : [0, 33, 49, 0, 63];
   const columnPositions = columnValues.map(
     value => (value * placement.groupWidth) / cellWidth
@@ -995,53 +1023,13 @@ export function layoutTemplate({ state, options, helpers }) {
     portraitWidth,
     portraitHeight,
     originalRadius,
-    cropCircle,
     context
   });
-
-  let placement;
-  let pageRadius = best.radius;
-  while (pageRadius > 3 && !placement) {
-    placement = findPlacement({
-      width: best.width,
-      height: best.height,
-      columns: best.columns,
-      radius: pageRadius * 10,
-      scale: pageRadius / originalRadius,
-      context
-    });
-    if (!placement) {
-      pageRadius -= 0.5;
-    }
-  }
-  const { width, height, landscape, columns } = best;
-  if (!placement) {
-    placement = findPlacement({
-      width,
-      height,
-      columns,
-      radius: pageRadius * 10,
-      scale: pageRadius / originalRadius,
-      force: true,
-      context
-    });
-  }
-  if (!placement) {
-    pageRadius = 3;
-    placement = findPlacement({
-      width,
-      height,
-      columns,
-      radius: 30,
-      scale: 3 / originalRadius,
-      force: true,
-      context
-    });
-  }
-  if (!placement) {
+  if (!best) {
     return null;
   }
 
+  const { width, height, landscape, columns, radius: pageRadius, placement } = best;
   const scale = pageRadius / originalRadius;
   const diagramRadius = pageRadius * 10;
   const { offsetX, offsetY } = placement;
@@ -1209,7 +1197,21 @@ export function layoutTemplate({ state, options, helpers }) {
   addText(margin, height - 7, helpers.translate('pdf.attribution'), 6.5, gray);
   addText(margin, height - 3, helpers.translate('pdf.license'), 6.5, gray);
 
-  drawGlobe({ items, width, height, state, helpers });
+  const globePlacement = {
+    items,
+    width,
+    height,
+    state,
+    helpers,
+    diagramCircle: {
+      x: offsetX,
+      y: offsetY,
+      radius: diagramRadius
+    }
+  };
+  if (!drawGlobe({ ...globePlacement, outsideCircleOnly: true })) {
+    drawGlobe(globePlacement);
+  }
   const result = {
     P: items,
     W: width,
