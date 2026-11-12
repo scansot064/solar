@@ -192,12 +192,6 @@ export function createApp({ state, modules }) {
       [tr('pdf.west'), -radius - 1.2, 0.4]
     ];
 
-    cardinalLabels.forEach(([label, x, y]) => {
-      svgParts.push(
-        `<text x="${x}" y="${y}" fill="var(--mu)" font-weight="700">${label}</text>`
-      );
-    });
-
     const pathPoints = sunPathSamples.map(({ elevation, azimuth }) => {
       const elevationRadians = elevation * radiansPerDegree;
       const pathRadius =
@@ -218,18 +212,7 @@ export function createApp({ state, modules }) {
       event.r * Math.sin(event.A * radiansPerDegree),
       -event.r * Math.cos(event.A * radiansPerDegree)
     ]);
-    events.forEach((event, index) => {
-      const [x, y] = points[index];
-      const color = event.z ? 'var(--bl)' : 'var(--ac)';
-      const markerRadius = index === selectedIndex ? 0.6 : 0.4;
-      const markerStroke = index === selectedIndex ? 'var(--fg)' : 'none';
-
-      svgParts.push(
-        `<circle cx="${x}" cy="${y}" r="${markerRadius}" fill="${color}" stroke="${markerStroke}" stroke-width=".15"/>`
-      );
-    });
-
-    events.forEach((event, index) => {
+    const eventLabels = events.map((event, index) => {
       const [x, y] = points[index];
       let labelX = x + Math.sin(event.A * radiansPerDegree) * 1.3;
       let labelY = y - Math.cos(event.A * radiansPerDegree) * 1.3 + 0.35;
@@ -257,8 +240,66 @@ export function createApp({ state, modules }) {
 
       const color = event.z ? 'var(--bl)' : 'var(--ac)';
       const label = event.z ? tr(`event.${event.tag}`) : `${Math.round(event.t)}h`;
+      return { x: labelX, y: labelY, anchor: textAnchor, color, text: label };
+    });
+
+    const getTextBounds = ({ x, y, anchor, text }) => {
+      const fontSize = radius / 12;
+      const textWidth = text.length * fontSize * 0.55;
+      const left =
+        anchor === 'start' ? x : anchor === 'end' ? x - textWidth : x - textWidth / 2;
+      return {
+        left: left - 0.2,
+        right: left + textWidth + 0.2,
+        top: y - fontSize - 0.1,
+        bottom: y + fontSize * 0.25 + 0.1
+      };
+    };
+    const overlaps = (first, second) =>
+      first.left < second.right &&
+      first.right > second.left &&
+      first.top < second.bottom &&
+      first.bottom > second.top;
+    const endpointLabelBounds = eventLabels
+      .filter((_, index) => events[index].tag === 'sunrise' || events[index].tag === 'sunset')
+      .map(getTextBounds);
+    const positionedCardinals = cardinalLabels.map(([label, x, y], index) => {
+      if (index < 2) {
+        return { label, x, y };
+      }
+
+      const candidates = [y, y - 2.2, y + 2.2, y - 3.8, y + 3.8];
+      const collisionCount = candidateY => {
+        const bounds = getTextBounds({ x, y: candidateY, anchor: 'middle', text: label });
+        return endpointLabelBounds.filter(endpoint => overlaps(bounds, endpoint)).length;
+      };
+      const clearPosition = candidates.find(candidateY => collisionCount(candidateY) === 0);
+      const adjustedY =
+        clearPosition ??
+        candidates.reduce((bestY, candidateY) =>
+          collisionCount(candidateY) < collisionCount(bestY) ? candidateY : bestY
+        );
+      return { label, x, y: adjustedY };
+    });
+    positionedCardinals.forEach(({ label, x, y }) => {
       svgParts.push(
-        `<text x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" fill="${color}">${label}</text>`
+        `<text x="${x}" y="${y}" fill="var(--mu)" font-weight="700">${label}</text>`
+      );
+    });
+
+    events.forEach((event, index) => {
+      const [x, y] = points[index];
+      const color = event.z ? 'var(--bl)' : 'var(--ac)';
+      const markerRadius = index === selectedIndex ? 0.6 : 0.4;
+      const markerStroke = index === selectedIndex ? 'var(--fg)' : 'none';
+
+      svgParts.push(
+        `<circle cx="${x}" cy="${y}" r="${markerRadius}" fill="${color}" stroke="${markerStroke}" stroke-width=".15"/>`
+      );
+    });
+    eventLabels.forEach(({ x, y, anchor, color, text }) => {
+      svgParts.push(
+        `<text x="${x}" y="${y}" text-anchor="${anchor}" fill="${color}">${text}</text>`
       );
     });
 
