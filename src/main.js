@@ -6,7 +6,11 @@ import * as pdf from './pdf.js';
 
 export function createApp({ state, modules }) {
   const { clamp, computeSun } = modules.astro;
-  const { renderEarthSol, renderEarthTierra } = modules.earthView;
+  const {
+    renderEarthSol,
+    renderEarthTierra,
+    updateEarthObserverMarker
+  } = modules.earthView;
   const {
     getLanguage,
     getSavedLanguage,
@@ -459,9 +463,11 @@ export function createApp({ state, modules }) {
         : renderEarthTierra(renderOptions);
   }
 
-  let dragging = false;
   const earthElement = $('earth');
   let latitudeUpdateTimer;
+  let activePointerId = null;
+  let dragLatitude = null;
+  let markerUpdateFrame = null;
 
   function scheduleLatitudeUpdate() {
     clearTimeout(latitudeUpdateTimer);
@@ -471,7 +477,16 @@ export function createApp({ state, modules }) {
     }, 120);
   }
 
-  function pickLatitude(pointerEvent) {
+  function scheduleDraggedLatitudeUpdate(latitude) {
+    clearTimeout(latitudeUpdateTimer);
+    latitudeUpdateTimer = setTimeout(() => {
+      $('lat').value = latitude;
+      latitudeUpdateTimer = null;
+      run(false);
+    }, 120);
+  }
+
+  function getLatitudeAtPointer(pointerEvent) {
     const fixedSun = earthViewMode === 'sol';
     const centerX = fixedSun ? 95 : 70;
     const bounds = earthElement.querySelector('svg').getBoundingClientRect();
@@ -481,22 +496,72 @@ export function createApp({ state, modules }) {
       Math.atan2(y, fixedSun ? x : Math.max(x, 0)) / radiansPerDegree +
       (fixedSun ? solarState.declination : 0);
 
-    $('lat').value = Math.max(-90, Math.min(90, Math.round(latitudeAngle)));
-    scheduleLatitudeUpdate();
+    return Math.max(-90, Math.min(90, latitudeAngle));
+  }
+
+  function scheduleMarkerPreview() {
+    if (markerUpdateFrame !== null) {
+      return;
+    }
+
+    markerUpdateFrame = requestAnimationFrame(() => {
+      markerUpdateFrame = null;
+      updateEarthObserverMarker(earthElement, {
+        latitude: dragLatitude,
+        declination: solarState.declination,
+        view: earthViewMode
+      });
+    });
   }
 
   earthElement.addEventListener('pointerdown', pointerEvent => {
-    dragging = true;
+    if (
+      activePointerId !== null ||
+      pointerEvent.button !== 0 ||
+      !pointerEvent.target.closest('[data-observer-marker]')
+    ) {
+      return;
+    }
+
+    pointerEvent.preventDefault();
+    clearTimeout(latitudeUpdateTimer);
+    latitudeUpdateTimer = null;
+    activePointerId = pointerEvent.pointerId;
     earthElement.setPointerCapture(pointerEvent.pointerId);
-    pickLatitude(pointerEvent);
+    dragLatitude = getLatitudeAtPointer(pointerEvent);
+    scheduleMarkerPreview();
   });
   earthElement.addEventListener('pointermove', pointerEvent => {
-    if (dragging) {
-      pickLatitude(pointerEvent);
+    if (pointerEvent.pointerId === activePointerId) {
+      dragLatitude = getLatitudeAtPointer(pointerEvent);
+      scheduleMarkerPreview();
     }
   });
-  addEventListener('pointerup', () => {
-    dragging = false;
+  const finishLatitudeDrag = pointerEvent => {
+    if (pointerEvent.pointerId !== activePointerId) {
+      return;
+    }
+
+    activePointerId = null;
+    if (markerUpdateFrame !== null) {
+      cancelAnimationFrame(markerUpdateFrame);
+      markerUpdateFrame = null;
+    }
+    if (dragLatitude === null) {
+      return;
+    }
+
+    updateEarthObserverMarker(earthElement, {
+      latitude: dragLatitude,
+      declination: solarState.declination,
+      view: earthViewMode
+    });
+    const latitude = Math.round(dragLatitude);
+    dragLatitude = null;
+    scheduleDraggedLatitudeUpdate(latitude);
+  };
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(eventName => {
+    earthElement.addEventListener(eventName, finishLatitudeDrag);
   });
 
   function renderCraftInstructions() {

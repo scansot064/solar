@@ -49,10 +49,55 @@ function renderObserverMarker({ x, y, latitudeAngle }) {
   const dy = 14 * Math.cos(latitudeAngle);
 
   return [
-    `<line x1="${x - dx}" y1="${y - dy}" x2="${x + dx}" y2="${y + dy}" stroke="var(--bl)" stroke-width="1.4"/>`,
-    `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--bl)" stroke="var(--bg)" stroke-width="1.5"/>`,
-    `<circle cx="${x}" cy="${y}" r="6" fill="none" stroke="var(--bl)" stroke-opacity=".5"/>`
+    '<g data-observer-marker>',
+    `<circle data-marker-hit cx="${x}" cy="${y}" r="16" fill="transparent" pointer-events="all"/>`,
+    `<line data-marker-line x1="${x - dx}" y1="${y - dy}" x2="${x + dx}" y2="${y + dy}" stroke="var(--bl)" stroke-width="1.4"/>`,
+    `<circle data-marker-dot cx="${x}" cy="${y}" r="3.5" fill="var(--bl)" stroke="var(--bg)" stroke-width="1.5"/>`,
+    `<circle data-marker-ring cx="${x}" cy="${y}" r="6" fill="none" stroke="var(--bl)" stroke-opacity=".5"/>`,
+    '</g>'
   ].join('');
+}
+
+function getObserverMarkerGeometry(latitude, declination, view) {
+  const latitudeAngle =
+    latitude * DEG_TO_RAD - (view === 'sol' ? declination * DEG_TO_RAD : 0);
+  const centerX = view === 'sol' ? 95 : 70;
+
+  return {
+    x: centerX + 70 * Math.cos(latitudeAngle),
+    y: 100 - 70 * Math.sin(latitudeAngle),
+    latitudeAngle
+  };
+}
+
+export function updateEarthObserverMarker(element, { latitude, declination, view }) {
+  const marker = element.querySelector('[data-observer-marker]');
+  if (!marker) {
+    throw new Error('The Earth observer marker is missing.');
+  }
+
+  const { x, y, latitudeAngle } = getObserverMarkerGeometry(
+    latitude,
+    declination,
+    view
+  );
+  const dx = 14 * Math.sin(latitudeAngle);
+  const dy = 14 * Math.cos(latitudeAngle);
+  const hit = marker.querySelector('[data-marker-hit]');
+  const line = marker.querySelector('[data-marker-line]');
+  const dot = marker.querySelector('[data-marker-dot]');
+  const ring = marker.querySelector('[data-marker-ring]');
+
+  hit.setAttribute('cx', x);
+  hit.setAttribute('cy', y);
+  line.setAttribute('x1', x - dx);
+  line.setAttribute('y1', y - dy);
+  line.setAttribute('x2', x + dx);
+  line.setAttribute('y2', y + dy);
+  [dot, ring].forEach(circle => {
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+  });
 }
 
 function renderBase({ latitudeGrid, sunPath, tiltLines, referenceLines, observerMarker }) {
@@ -161,15 +206,11 @@ export function renderEarthSol({ latitude, declination, helpers }) {
   const equator = `<line x1="${equatorStart[0]}" y1="${equatorStart[1]}" x2="${equatorEnd[0]}" y2="${equatorEnd[1]}" stroke="var(--mu)"/>`;
   const referenceLines = axis + equator;
   const tiltLines = angle => [project(angle), project(angle, radius, 1)];
-  const latitudeAngle = latitude * DEG_TO_RAD - declinationRad;
-  const [observerX, observerY] = project(latitude);
+  const observerGeometry = getObserverMarkerGeometry(latitude, declination, 'sol');
+  const { x: observerX, y: observerY, latitudeAngle } = observerGeometry;
   const sunPath =
     Math.cos(latitudeAngle) > 0 ? [[[225, observerY], [observerX, observerY]]] : [];
-  const observerMarker = renderObserverMarker({
-    x: observerX,
-    y: observerY,
-    latitudeAngle
-  });
+  const observerMarker = renderObserverMarker(observerGeometry);
 
   markup += renderBase({ latitudeGrid, sunPath, tiltLines, referenceLines, observerMarker });
 
@@ -279,17 +320,13 @@ export function renderEarthTierra({ latitude, declination, helpers }) {
     />
   `;
   const tiltLines = angle => [[centerX, centerY], project(angle)];
-  const latitudeAngle = latitude * DEG_TO_RAD;
-  const [observerX, observerY] = project(latitude);
+  const observerGeometry = getObserverMarkerGeometry(latitude, declination, 'tierra');
+  const { x: observerX, y: observerY, latitudeAngle } = observerGeometry;
   const sunPath =
     Math.cos(latitudeAngle - declinationRad) > 0
       ? [[[observerX, observerY], [observerX + 140 * cosDeclination, observerY - 140 * sinDeclination]]]
       : [];
-  const observerMarker = renderObserverMarker({
-    x: observerX,
-    y: observerY,
-    latitudeAngle
-  });
+  const observerMarker = renderObserverMarker(observerGeometry);
 
   markup += renderBase({ latitudeGrid, sunPath, tiltLines, referenceLines, observerMarker });
   markup += `<text x="${centerX}" y="${centerY - radius - 11}" text-anchor="middle" font-weight="700">N</text>`;
