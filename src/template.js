@@ -152,8 +152,7 @@ export function findHeaderBox({
       }),
       pt: 8,
       step: 3.2
-    },
-    { text: translate('pdf.solarTime'), pt: 8, bold: 1, step: 3.2 }
+    }
   ];
   const obstacles = [
     ...diagramBoxes,
@@ -1262,6 +1261,14 @@ export function layoutTemplate({ state, options, helpers }) {
   items.push(...tableItems);
   addText(margin, height - 7, helpers.translate('pdf.attribution'), 6.5, gray);
   addText(margin, height - 3, helpers.translate('pdf.license'), 6.5, gray);
+  addText(
+    width - margin,
+    height - 7,
+    helpers.translate('pdf.solarTime'),
+    5.5,
+    gray,
+    'end'
+  );
 
   const globePlacement = {
     items,

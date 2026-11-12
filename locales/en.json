@@ -118,7 +118,7 @@
   "pdf.citiesUnavailable": "Nearby city data unavailable.",
   "pdf.scaledDown": " (reduced from {radius} mm)",
   "pdf.scaledUp": " (enlarged from {radius} mm)",
-  "pdf.solarTime": "SOLAR time, not clock time: in Spain, clocks are ~1 h ahead in winter and ~2 h ahead in summer.",
+  "pdf.solarTime": "Local solar time may differ from clock time due to longitude, time zones, and daylight saving.",
   "pdf.instructions": "Attach a vertical pole at each point, write its height (mm) next to it, and add a yellow pom-pom to the tip.{trimmed}",
   "pdf.trimmed": " * Height capped.",
   "pdf.scaleCheck": "Check: this line is 50 mm long",

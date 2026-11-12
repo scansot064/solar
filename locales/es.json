@@ -118,7 +118,7 @@
   "pdf.citiesUnavailable": "Datos de ciudades cercanas no disponibles.",
   "pdf.scaledDown": " (reducido desde {radius} mm)",
   "pdf.scaledUp": " (ampliado desde {radius} mm)",
-  "pdf.solarTime": "Horas SOLARES, no del reloj: en España el reloj va adelantado ~1 h en invierno y ~2 h en verano.",
+  "pdf.solarTime": "La hora solar local puede diferir de la oficial por la longitud, los husos horarios y el horario de verano.",
   "pdf.instructions": "Pega en cada punto un palo vertical con la altura (mm) escrita junto a él y un pompón amarillo en la punta.{trimmed}",
   "pdf.trimmed": " * Altura recortada.",
   "pdf.scaleCheck": "Comprobación: esta línea mide 50 mm",
