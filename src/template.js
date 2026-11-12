@@ -446,7 +446,7 @@ function createFixedLayout({ width, height, portrait, context }) {
     const diagramBottom = globeBox[1] - 6;
     const side = Math.max(
       0,
-      Math.min(160, width - margin * 2, diagramBottom - diagramTop)
+      Math.min(width - margin * 2, diagramBottom - diagramTop)
     );
     diagramBox = {
       x: (width - side) / 2,
@@ -455,11 +455,20 @@ function createFixedLayout({ width, height, portrait, context }) {
       h: side
     };
   } else {
-    const diagramWidth = Math.min(280, width - margin * 2);
-    const diagramHeight = Math.min(160, height - margin * 2);
+    const diagramTop = topContentBottom + 6;
+    const diagramBottom = height - margin - 14;
+    const minDiagramHeight = 160;
+    const diagramWidth = width - margin * 2;
+    const diagramHeight = Math.min(
+      height - margin * 2,
+      Math.max(minDiagramHeight, diagramBottom - diagramTop)
+    );
     diagramBox = {
       x: (width - diagramWidth) / 2,
-      y: (height - diagramHeight) / 2,
+      y:
+        diagramHeight > minDiagramHeight
+          ? diagramTop
+          : (height - diagramHeight) / 2,
       w: diagramWidth,
       h: diagramHeight
     };
