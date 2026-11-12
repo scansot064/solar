@@ -415,8 +415,9 @@ function createFixedLayout({ width, height, portrait, context }) {
 
   const rowHeight = columns > 1 ? 3 : 4.2;
   const rowCount = Math.ceil(state.events.length / columns);
+  const headerHeight = rowHeight + 1.5;
   const tableWidth = columns * groupWidth + (columns - 1) * groupGap;
-  const tableHeight = (rowCount + 1) * rowHeight;
+  const tableHeight = rowCount * rowHeight + headerHeight;
   const tableX = width - margin - tableWidth;
   const tableY = margin;
   const tableBoxes = Array.from({ length: columns }, (_, column) => {
@@ -486,6 +487,7 @@ function createFixedLayout({ width, height, portrait, context }) {
     tableHeight,
     groupWidth,
     groupGap,
+    headerHeight,
     rowHeight,
     tableBoxes,
     tableRectangle: [
@@ -513,6 +515,7 @@ function findPlacement({ radius, scale, fixedLayout, context }) {
     tableHeight,
     groupWidth,
     groupGap,
+    headerHeight,
     rowHeight,
     tableBoxes,
     tableRectangle,
@@ -597,6 +600,7 @@ function findPlacement({ radius, scale, fixedLayout, context }) {
     tableHeight,
     groupWidth,
     groupGap,
+    headerHeight,
     rowHeight,
     insideCircle: false,
     header,
@@ -946,7 +950,8 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
     state.events
       .slice(column * placement.rowCount, (column + 1) * placement.rowCount)
       .forEach((event, index) => {
-        const rowY = headerY + (index + 1) * placement.rowHeight;
+        const rowY =
+          headerY + placement.headerHeight + index * placement.rowHeight;
         const time = helpers.formatTime(event.t);
         const eventLabel = event.z ? ` ${helpers.translate(`event.${event.tag}`)}` : '';
         const elevation = `${helpers.formatNumber(event.displayElevation, 0)}º`;
