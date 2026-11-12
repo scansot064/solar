@@ -890,18 +890,58 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
   const addTableText = (x, y, text, color, align = 'start', bold = 0) => {
     tableItems.push({ k: 't', x, y, s: text, pt: tableFont, c: color, an: align, b: bold });
   };
+  const addTableLine = (x1, y1, x2, y2) => {
+    tableItems.push({ k: 'l', x1, y1, x2, y2, c: gray, w: 0.2 });
+  };
 
   for (let column = 0; column < placement.columns; column++) {
     const columnX =
       placement.tableX + column * (placement.groupWidth + placement.groupGap);
     const headerY = placement.tableY + 3;
-    addTableText(columnX + columnPositions[0], headerY, helpers.translate('table.time'), gray, 'start', 1);
-    addTableText(columnX + columnPositions[1], headerY, helpers.translate('pdf.elevation'), gray, 'end');
-    addTableText(columnX + columnPositions[2], headerY, helpers.translate('pdf.azimuth'), gray, 'end');
+    addTableText(
+      columnX + columnPositions[0],
+      headerY,
+      helpers.translate('table.time'),
+      gray,
+      'start',
+      1
+    );
+    addTableText(
+      columnX + columnPositions[1],
+      headerY,
+      helpers.translate('pdf.elevation'),
+      gray,
+      'end',
+      1
+    );
+    addTableText(
+      columnX + columnPositions[2],
+      headerY,
+      helpers.translate('pdf.azimuth'),
+      gray,
+      'end',
+      1
+    );
     if (isDome) {
-      addTableText(columnX + columnPositions[3], headerY, helpers.translate('pdf.distance'), gray, 'end');
+      addTableText(
+        columnX + columnPositions[3],
+        headerY,
+        helpers.translate('pdf.distance'),
+        gray,
+        'end',
+        1
+      );
     }
-    addTableText(columnX + columnPositions[4], headerY, helpers.translate('pdf.height'), gray, 'end');
+    addTableText(
+      columnX + columnPositions[4],
+      headerY,
+      helpers.translate('pdf.height'),
+      gray,
+      'end',
+      1
+    );
+    const headerRuleY = headerY + placement.rowHeight / 2;
+    addTableLine(columnX, headerRuleY, columnX + placement.groupWidth, headerRuleY);
 
     state.events
       .slice(column * placement.rowCount, (column + 1) * placement.rowCount)
@@ -911,7 +951,7 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
         const eventLabel = event.z ? ` ${helpers.translate(`event.${event.tag}`)}` : '';
         const elevation = `${helpers.formatNumber(event.displayElevation, 0)}º`;
         const azimuth = `${helpers.formatNumber(event.displayAzimuth, 0)}º`;
-        const height = `${helpers.formatNumber(event.h * scale * 10, 0)} mm${event.cap ? '*' : ''}`;
+        const height = `${helpers.formatNumber(event.h * scale * 10, 0)}${event.cap ? '*' : ''}`;
 
         addTableText(columnX + columnPositions[0], rowY, time + eventLabel, lightGray);
         addTableText(columnX + columnPositions[1], rowY, elevation, lightGray, 'end');
@@ -927,6 +967,17 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
         }
         addTableText(columnX + columnPositions[4], rowY, height, lightGray, 'end');
       });
+
+    if (column < placement.columns - 1) {
+      const separatorX =
+        columnX + placement.groupWidth + placement.groupGap / 2;
+      addTableLine(
+        separatorX,
+        placement.tableY,
+        separatorX,
+        placement.tableY + placement.tableHeight
+      );
+    }
   }
 
   return tableItems;
