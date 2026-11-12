@@ -1,7 +1,9 @@
 const RAD = Math.PI / 180;
 const PAPER_SIZES = {
   A4: [210, 297],
-  A3: [297, 420]
+  A3: [297, 420],
+  Letter: [215.9, 279.4],
+  Ledger: [279.4, 431.8]
 };
 const TEMPLATE_CACHE_LIMIT = 12;
 const templateCache = new Map();
@@ -765,7 +767,6 @@ function findBestLayout({
   portraitHeight,
   originalRadius,
   cropCircle,
-  paper,
   context
 }) {
   let best = null;
@@ -774,7 +775,12 @@ function findBestLayout({
     for (const columns of [1, 2, 3]) {
       const width = landscape ? portraitHeight : portraitWidth;
       const height = landscape ? portraitWidth : portraitHeight;
-      const maxRadius = cropCircle ? 500 : paper === 'A3' ? 400 : originalRadius * 10;
+      const maxRadius = cropCircle
+        ? 500
+        : Math.min(
+            originalRadius * 10,
+            Math.max(portraitWidth, portraitHeight) - context.margin * 2
+          );
       let maximum = 0;
 
       for (let candidateRadius = Math.floor(maxRadius / 5) * 5; candidateRadius >= 15; candidateRadius -= 5) {
@@ -990,7 +996,6 @@ export function layoutTemplate({ state, options, helpers }) {
     portraitHeight,
     originalRadius,
     cropCircle,
-    paper: options.paper,
     context
   });
 
