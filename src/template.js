@@ -23,7 +23,7 @@ function formatLabelLines(event, scale, { formatTime, formatNumber, translate })
   if (event.z) {
     lines.push(translate(`event.${event.tag}`));
   }
-  lines.push(`${formatNumber(event.h * scale)} cm${event.cap ? '*' : ''}`);
+  lines.push(`${formatNumber(event.h * scale * 10, 0)} mm${event.cap ? '*' : ''}`);
   return lines;
 }
 
@@ -106,12 +106,13 @@ export function findHeaderBox({
 }) {
   const { translate, formatNumber, citySummary } = helpers;
   const originalRadius = state.radius;
-  const scaledRadius = radius / 10;
+  const originalRadiusMm = originalRadius * 10;
+  const scaledRadius = radius;
   const scaling =
-    scaledRadius < originalRadius
-      ? translate('pdf.scaledDown', { radius: formatNumber(originalRadius) })
-      : scaledRadius > originalRadius
-        ? translate('pdf.scaledUp', { radius: formatNumber(originalRadius) })
+    scaledRadius < originalRadiusMm
+      ? translate('pdf.scaledDown', { radius: formatNumber(originalRadiusMm, 0) })
+      : scaledRadius > originalRadiusMm
+        ? translate('pdf.scaledUp', { radius: formatNumber(originalRadiusMm, 0) })
         : '';
   const dateText = new Date(`${state.date}T12:00:00Z`).toLocaleDateString(
     options.language,
@@ -131,7 +132,7 @@ export function findHeaderBox({
     {
       text: translate('pdf.subtitle', {
         declination: formatNumber(state.declination),
-        radius: formatNumber(scaledRadius),
+        radius: formatNumber(scaledRadius, 0),
         scaling,
         model: translate(state.model === 'cupula' ? 'pdf.modelDome' : 'pdf.modelPole'),
         paper: options.paper
@@ -910,7 +911,7 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
         const eventLabel = event.z ? ` ${helpers.translate(`event.${event.tag}`)}` : '';
         const elevation = `${helpers.formatNumber(event.displayElevation, 0)}º`;
         const azimuth = `${helpers.formatNumber(event.displayAzimuth, 0)}º`;
-        const height = `${helpers.formatNumber(event.h * scale)} cm${event.cap ? '*' : ''}`;
+        const height = `${helpers.formatNumber(event.h * scale * 10, 0)} mm${event.cap ? '*' : ''}`;
 
         addTableText(columnX + columnPositions[0], rowY, time + eventLabel, lightGray);
         addTableText(columnX + columnPositions[1], rowY, elevation, lightGray, 'end');
@@ -919,7 +920,7 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
           addTableText(
             columnX + columnPositions[3],
             rowY,
-            helpers.formatNumber(event.r * scale),
+            helpers.formatNumber(event.r * scale * 10, 0),
             lightGray,
             'end'
           );

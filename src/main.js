@@ -694,12 +694,12 @@ export function createApp({ state, modules }) {
     const sizeMessage =
       layout.Rc < layout.R0
         ? tr('pdf.reduced', {
-            radius: formatNumber(layout.R0),
+            radius: formatNumber(layout.R0 * 10, 0),
             factor: formatNumber(layout.k, 2)
           })
         : layout.Rc > layout.R0
           ? tr('pdf.enlarged', {
-              radius: formatNumber(layout.R0),
+              radius: formatNumber(layout.R0 * 10, 0),
               factor: formatNumber(layout.k, 2)
             })
           : tr('pdf.unchanged');
@@ -713,7 +713,7 @@ export function createApp({ state, modules }) {
       tr('pdf.preview', {
         paper: layout.pk,
         orientation,
-        radius: formatNumber(layout.Rc)
+        radius: formatNumber(layout.Rc * 10, 0)
       }) +
       sizeMessage +
       cropNotice +
