@@ -128,17 +128,17 @@ export function createApp({ state, modules }) {
     });
 
     solarState = {
-      lat: latitude,
-      R: radius,
-      mode: model,
-      N: dayNumber,
-      dec: declination,
-      sp: sinLatitude,
-      cp: cosLatitude,
-      sd: sinDeclination,
-      cd: cosDeclination,
-      H0: dayAngle,
-      hmax: maxPoleHeight
+      latitude,
+      radius,
+      model,
+      dayNumber,
+      declination,
+      sinLatitude,
+      cosLatitude,
+      sinDeclination,
+      cosDeclination,
+      daylightAngle: dayAngle,
+      maxPoleHeight
     };
     state.solar = solarState;
 
@@ -167,7 +167,7 @@ export function createApp({ state, modules }) {
   }
 
   function renderPlanSvg() {
-    const radius = solarState.R;
+    const radius = solarState.radius;
     const viewRadius = radius + 3;
     const svgParts = [
       `<svg
@@ -233,7 +233,7 @@ export function createApp({ state, modules }) {
       tr('table.elevation'),
       tr('table.azimuth')
     ];
-    if (solarState.mode === 'cupula') {
+    if (solarState.model === 'cupula') {
       headers.push(tr('table.distance'));
     }
     headers.push(tr('table.pole'));
@@ -243,7 +243,7 @@ export function createApp({ state, modules }) {
       const selectedClass = index === selectedIndex ? 'sel' : '';
       const timeLabel = `${formatTime(event.t)}${event.tag ? ` ${tr(`event.${event.tag}`)}` : ''}`;
       const distanceCell =
-        solarState.mode === 'cupula' ? `<td>${formatNumber(event.r)}</td>` : '';
+        solarState.model === 'cupula' ? `<td>${formatNumber(event.r)}</td>` : '';
       const cappedMarker = event.cap ? ' *' : '';
 
       return `
@@ -289,14 +289,14 @@ export function createApp({ state, modules }) {
   function renderSteps() {
     const event = events[selectedIndex];
     const {
-      lat: latitude,
-      R: radius,
-      N: dayNumber,
-      dec: declination,
-      sp: sinLatitude,
-      cp: cosLatitude,
-      sd: sinDeclination,
-      cd: cosDeclination
+      latitude,
+      radius,
+      dayNumber,
+      declination,
+      sinLatitude,
+      cosLatitude,
+      sinDeclination,
+      cosDeclination
     } = solarState;
     const cosineAzimuth = Math.cos(event.A * radiansPerDegree);
     const azimuthDenominator = Math.cos(event.e * radiansPerDegree) * cosLatitude;
@@ -333,7 +333,7 @@ export function createApp({ state, modules }) {
       `<p>${azimuthExplanation}</p>`
     ];
 
-    if (solarState.mode === 'cupula') {
+    if (solarState.model === 'cupula') {
       explanationParts.push(
         `<p>${tr('steps.dome', {
           radius,
@@ -354,7 +354,7 @@ export function createApp({ state, modules }) {
           elevation: formatNumber(event.displayElevation, 0),
           tan: formatNumber(Math.tan(event.e * radiansPerDegree), 6),
           height: formatNumber(event.h),
-          capped: event.cap ? tr('steps.capped', { height: solarState.hmax }) : ''
+          capped: event.cap ? tr('steps.capped', { height: solarState.maxPoleHeight }) : ''
         })}</p>`
       );
     }
@@ -366,7 +366,7 @@ export function createApp({ state, modules }) {
   function renderEarth() {
     const renderOptions = {
       latitude: +$('lat').value,
-      declination: solarState.dec,
+      declination: solarState.declination,
       helpers: { translate: tr, formatNumber }
     };
     $('earth').innerHTML =
@@ -395,7 +395,7 @@ export function createApp({ state, modules }) {
     const y = 100 - ((pointerEvent.clientY - bounds.top) * 200) / bounds.height;
     const latitudeAngle =
       Math.atan2(y, fixedSun ? x : Math.max(x, 0)) / radiansPerDegree +
-      (fixedSun ? solarState.dec : 0);
+      (fixedSun ? solarState.declination : 0);
 
     $('lat').value = Math.max(-90, Math.min(90, Math.round(latitudeAngle)));
     scheduleLatitudeUpdate();
@@ -422,8 +422,8 @@ export function createApp({ state, modules }) {
     }
 
     const event = events[selectedIndex];
-    const radius = solarState.R;
-    const isDome = solarState.mode === 'cupula';
+    const radius = solarState.radius;
+    const isDome = solarState.model === 'cupula';
     const azimuth = event.displayAzimuth;
     const maxHeight = Math.max(...events.map(item => item.h));
     const requiredLength = Math.ceil(maxHeight) + 3;
@@ -485,17 +485,17 @@ export function createApp({ state, modules }) {
   function getTemplateInput() {
     const citySummary =
       Array.isArray(cities) && cities.length
-        ? getCitySummary(solarState.lat)
+        ? getCitySummary(solarState.latitude)
         : tr('pdf.citiesUnavailable');
 
     return {
       state: {
         events,
-        radius: solarState.R,
-        model: solarState.mode,
-        latitude: solarState.lat,
-        declination: solarState.dec,
-        daylightAngle: solarState.H0,
+        radius: solarState.radius,
+        model: solarState.model,
+        latitude: solarState.latitude,
+        declination: solarState.declination,
+        daylightAngle: solarState.daylightAngle,
         date: $('date').value
       },
       options: {
@@ -533,7 +533,7 @@ export function createApp({ state, modules }) {
 
   function updateTemplatePreview(templateInput = getTemplateInput()) {
     const layout = getTemplateLayout(templateInput);
-    $('crop-circle').disabled = solarState.mode !== 'cupula';
+    $('crop-circle').disabled = solarState.model !== 'cupula';
 
     if (!layout) {
       $('tinfo').innerHTML = tr('pdf.noSun');
@@ -554,7 +554,7 @@ export function createApp({ state, modules }) {
             })
           : tr('pdf.unchanged');
     const cropNotice =
-      $('crop-circle').checked && solarState.mode === 'cupula'
+      $('crop-circle').checked && solarState.model === 'cupula'
         ? ` · ${tr('pdf.cropNotice')}`
         : '';
     const orientation = tr(layout.land ? 'pdf.landscape' : 'pdf.portrait');
@@ -590,7 +590,7 @@ export function createApp({ state, modules }) {
       open,
       template: templateInput,
       layout,
-      latitude: solarState.lat,
+      latitude: solarState.latitude,
       date: $('date').value,
       translate: tr
     });
