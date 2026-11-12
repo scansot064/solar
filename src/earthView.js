@@ -8,6 +8,7 @@ const TILT_LATITUDES = [
   -POLAR_CIRCLE_OFFSET
 ];
 const GRID_OFFSETS = [-63, -42, -21, 0, 21, 42, 63];
+const SUN_RAY_OFFSETS = GRID_OFFSETS;
 
 function renderLatitudeGrid(lines) {
   return lines
@@ -25,6 +26,22 @@ function renderSunPath(lines) {
         `<line x1="${start[0]}" y1="${start[1]}" x2="${end[0]}" y2="${end[1]}" stroke="var(--ac)" stroke-width="1.6"/>`
     )
     .join('');
+}
+
+function renderSunRays({ centerX, centerY, radius, declination }) {
+  const declinationRad = declination * DEG_TO_RAD;
+  const sinDeclination = Math.sin(declinationRad);
+  const cosDeclination = Math.cos(declinationRad);
+
+  return SUN_RAY_OFFSETS.map(offset => {
+    const halfChord = Math.sqrt(radius * radius - offset * offset);
+    const endX =
+      centerX - sinDeclination * offset + halfChord * cosDeclination;
+    const endY =
+      centerY - cosDeclination * offset - halfChord * sinDeclination;
+
+    return `<line x1="${endX + 140 * cosDeclination}" y1="${endY - 140 * sinDeclination}" x2="${endX}" y2="${endY}" stroke="var(--day)" stroke-width=".8" stroke-opacity=".35"/>`;
+  }).join('');
 }
 
 function renderTiltLines(projectLatitude) {
@@ -100,11 +117,19 @@ export function updateEarthObserverMarker(element, { latitude, declination, view
   });
 }
 
-function renderBase({ latitudeGrid, sunPath, tiltLines, referenceLines, observerMarker }) {
+function renderBase({
+  latitudeGrid,
+  sunPath,
+  sunRays = '',
+  tiltLines,
+  referenceLines,
+  observerMarker
+}) {
   return (
+    sunRays +
     renderLatitudeGrid(latitudeGrid) +
     referenceLines +
-    renderTiltLines(tiltLines) +
+    (tiltLines ? renderTiltLines(tiltLines) : '') +
     renderSunPath(sunPath) +
     observerMarker
   );
@@ -262,10 +287,6 @@ export function renderEarthTierra({ latitude, declination, helpers }) {
   const declinationRad = declination * DEG_TO_RAD;
   const sinDeclination = Math.sin(declinationRad);
   const cosDeclination = Math.cos(declinationRad);
-  const project = (angle, scale = radius) => [
-    centerX + scale * Math.cos(angle * DEG_TO_RAD),
-    centerY - scale * Math.sin(angle * DEG_TO_RAD)
-  ];
 
   const dayStart = [
     centerX - radius * sinDeclination,
@@ -290,16 +311,13 @@ export function renderEarthTierra({ latitude, declination, helpers }) {
     />
   `;
 
-  const latitudeGrid = GRID_OFFSETS.map(offset => {
-    const halfChord = Math.sqrt(radius * radius - offset * offset);
-    const projectedX = -sinDeclination * offset + halfChord * cosDeclination;
-    const projectedY = cosDeclination * offset + halfChord * sinDeclination;
+  const latitudeGrid = [0, ...TILT_LATITUDES].map(latitude => {
+    const latitudeRad = latitude * DEG_TO_RAD;
+    const halfChord = radius * Math.cos(latitudeRad);
+    const y = centerY - radius * Math.sin(latitudeRad);
     return [
-      [
-        centerX + projectedX + 140 * cosDeclination,
-        centerY - projectedY - 140 * sinDeclination
-      ],
-      [centerX + projectedX, centerY - projectedY]
+      [centerX - halfChord, y],
+      [centerX + halfChord, y]
     ];
   });
   const referenceLines = `
@@ -311,24 +329,17 @@ export function renderEarthTierra({ latitude, declination, helpers }) {
       stroke="var(--fg)"
       stroke-width="1.5"
     />
-    <line
-      x1="${centerX}"
-      y1="${centerY}"
-      x2="${centerX + radius}"
-      y2="${centerY}"
-      stroke="var(--mu)"
-    />
   `;
-  const tiltLines = angle => [[centerX, centerY], project(angle)];
   const observerGeometry = getObserverMarkerGeometry(latitude, declination, 'tierra');
   const { x: observerX, y: observerY, latitudeAngle } = observerGeometry;
+  const sunRays = renderSunRays({ centerX, centerY, radius, declination });
   const sunPath =
     Math.cos(latitudeAngle - declinationRad) > 0
       ? [[[observerX, observerY], [observerX + 140 * cosDeclination, observerY - 140 * sinDeclination]]]
       : [];
   const observerMarker = renderObserverMarker(observerGeometry);
 
-  markup += renderBase({ latitudeGrid, sunPath, tiltLines, referenceLines, observerMarker });
+  markup += renderBase({ latitudeGrid, sunPath, sunRays, referenceLines, observerMarker });
   markup += `<text x="${centerX}" y="${centerY - radius - 11}" text-anchor="middle" font-weight="700">N</text>`;
   markup += `<text x="${centerX}" y="${centerY + radius + 19}" text-anchor="middle" font-weight="700">S</text>`;
 
