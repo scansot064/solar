@@ -74,13 +74,37 @@ export function computeSun(latitude, date) {
     }
   }
 
+  const pathSamples = [];
+  const samplePathAt = (hour, atHorizon = false) => {
+    const position = at(hour, atHorizon);
+    pathSamples.push({
+      elevation: position.e,
+      azimuth: position.A
+    });
+  };
+
   if (dayAngle > 0 && dayAngle < 180) {
+    const sunriseHour = 12 - dayAngle / 15;
+    const sunsetHour = 12 + dayAngle / 15;
     events.push(
-      Object.assign(at(12 - dayAngle / 15, 1), { tag: 'sunrise' }),
-      Object.assign(at(12 + dayAngle / 15, 1), { tag: 'sunset' })
+      Object.assign(at(sunriseHour, 1), { tag: 'sunrise' }),
+      Object.assign(at(sunsetHour, 1), { tag: 'sunset' })
     );
+
+    samplePathAt(sunriseHour, true);
+    const firstQuarterHour = Math.ceil(sunriseHour * 4) / 4;
+    for (let hour = firstQuarterHour; hour < sunsetHour; hour += 0.25) {
+      if (hour > sunriseHour) {
+        samplePathAt(hour);
+      }
+    }
+    samplePathAt(sunsetHour, true);
+  } else if (dayAngle === 180) {
+    for (let hour = 0; hour <= 24; hour += 0.25) {
+      samplePathAt(hour);
+    }
   }
   events.sort((first, second) => first.t - second.t);
 
-  return { dayNumber, declination, dayAngle, events };
+  return { dayNumber, declination, dayAngle, events, pathSamples };
 }

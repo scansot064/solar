@@ -32,6 +32,7 @@ export function createApp({ state, modules }) {
   };
 
   let events = state.events;
+  let sunPathSamples = [];
   let solarState = state.solar;
   let selectedIndex = state.selectedIndex;
   let cities = state.cities;
@@ -101,7 +102,8 @@ export function createApp({ state, modules }) {
       dayNumber,
       declination,
       dayAngle,
-      events: computedEvents
+      events: computedEvents,
+      pathSamples: computedPathSamples
     } = computeSun(latitude, $('date').value);
     const sinLatitude = Math.sin(latitude * radiansPerDegree);
     const cosLatitude = Math.cos(latitude * radiansPerDegree);
@@ -110,6 +112,7 @@ export function createApp({ state, modules }) {
 
     events = computedEvents;
     state.events = events;
+    sunPathSamples = computedPathSamples;
     events.forEach(event => {
       event.displayElevation = Math.round(event.e);
       event.displayAzimuth = Math.round(event.A) % 360;
@@ -195,15 +198,27 @@ export function createApp({ state, modules }) {
       );
     });
 
-    const points = events.map(event => [
-      event.r * Math.sin(event.A * radiansPerDegree),
-      -event.r * Math.cos(event.A * radiansPerDegree)
-    ]);
-    const pathPoints = points.map(point => point.join(',')).join(' ');
+    const pathPoints = sunPathSamples
+      .map(({ elevation, azimuth }) => {
+        const elevationRadians = elevation * radiansPerDegree;
+        const pathRadius =
+          solarState.model === 'cupula'
+            ? radius * Math.cos(elevationRadians)
+            : radius;
+        return [
+          pathRadius * Math.sin(azimuth * radiansPerDegree),
+          -pathRadius * Math.cos(azimuth * radiansPerDegree)
+        ].join(',');
+      })
+      .join(' ');
     svgParts.push(
       `<polyline points="${pathPoints}" fill="none" stroke="var(--ac)" stroke-opacity=".5" stroke-dasharray="1 .6"/>`
     );
 
+    const points = events.map(event => [
+      event.r * Math.sin(event.A * radiansPerDegree),
+      -event.r * Math.cos(event.A * radiansPerDegree)
+    ]);
     events.forEach((event, index) => {
       const [x, y] = points[index];
       const color = event.z ? 'var(--bl)' : 'var(--ac)';
