@@ -38,7 +38,8 @@ function renderItem(item) {
     return `<rect x="${item.x}" y="${item.y}" width="${item.w}" height="${item.h}" fill="${getColor(item.c)}"/>`;
   }
   if (item.k === 'l') {
-    return `<line x1="${item.x1}" y1="${item.y1}" x2="${item.x2}" y2="${item.y2}" stroke="${getColor(item.c)}" stroke-width="${item.w}"/>`;
+    const dash = item.dash ? ` stroke-dasharray="${item.dash.join(' ')}"` : '';
+    return `<line x1="${item.x1}" y1="${item.y1}" x2="${item.x2}" y2="${item.y2}" stroke="${getColor(item.c)}" stroke-width="${item.w}"${dash}/>`;
   }
   if (item.k === 'p') {
     const points = item.pts.map(point => point.join(',')).join(' ');
@@ -75,7 +76,9 @@ function drawPdfItem(pdf, item, alignment) {
   if (item.k === 'l') {
     pdf.setDrawColor(...item.c);
     pdf.setLineWidth(item.w);
+    pdf.setLineDashPattern(item.dash || [], 0);
     pdf.line(item.x1, item.y1, item.x2, item.y2);
+    pdf.setLineDashPattern([], 0);
     return;
   }
 

@@ -198,21 +198,20 @@ export function createApp({ state, modules }) {
       );
     });
 
-    const pathPoints = sunPathSamples
-      .map(({ elevation, azimuth }) => {
-        const elevationRadians = elevation * radiansPerDegree;
-        const pathRadius =
-          solarState.model === 'cupula'
-            ? radius * Math.cos(elevationRadians)
-            : radius;
-        return [
-          pathRadius * Math.sin(azimuth * radiansPerDegree),
-          -pathRadius * Math.cos(azimuth * radiansPerDegree)
-        ].join(',');
-      })
-      .join(' ');
+    const pathPoints = sunPathSamples.map(({ elevation, azimuth }) => {
+      const elevationRadians = elevation * radiansPerDegree;
+      const pathRadius =
+        solarState.model === 'cupula'
+          ? radius * Math.cos(elevationRadians)
+          : radius;
+      return [
+        pathRadius * Math.sin(azimuth * radiansPerDegree),
+        -pathRadius * Math.cos(azimuth * radiansPerDegree)
+      ];
+    });
+    const serializedPathPoints = pathPoints.map(point => point.join(',')).join(' ');
     svgParts.push(
-      `<polyline points="${pathPoints}" fill="none" stroke="var(--ac)" stroke-opacity=".5" stroke-dasharray="1 .6"/>`
+      `<polyline points="${serializedPathPoints}" fill="none" stroke="var(--ac)" stroke-opacity=".5" stroke-dasharray="1 .6"/>`
     );
 
     const points = events.map(event => [
@@ -222,15 +221,44 @@ export function createApp({ state, modules }) {
     events.forEach((event, index) => {
       const [x, y] = points[index];
       const color = event.z ? 'var(--bl)' : 'var(--ac)';
-      const labelX = x + Math.sin(event.A * radiansPerDegree) * 1.3;
-      const labelY = y - Math.cos(event.A * radiansPerDegree) * 1.3 + 0.35;
       const markerRadius = index === selectedIndex ? 0.6 : 0.4;
       const markerStroke = index === selectedIndex ? 'var(--fg)' : 'none';
-      const label = event.z ? tr(`event.${event.tag}`) : `${Math.round(event.t)}h`;
 
       svgParts.push(
-        `<circle cx="${x}" cy="${y}" r="${markerRadius}" fill="${color}" stroke="${markerStroke}" stroke-width=".15"/>`,
-        `<text x="${labelX}" y="${labelY}" fill="${color}">${label}</text>`
+        `<circle cx="${x}" cy="${y}" r="${markerRadius}" fill="${color}" stroke="${markerStroke}" stroke-width=".15"/>`
+      );
+    });
+
+    events.forEach((event, index) => {
+      const [x, y] = points[index];
+      let labelX = x + Math.sin(event.A * radiansPerDegree) * 1.3;
+      let labelY = y - Math.cos(event.A * radiansPerDegree) * 1.3 + 0.35;
+      let textAnchor = 'middle';
+
+      if (
+        (event.tag === 'sunrise' || event.tag === 'sunset') &&
+        pathPoints.length > 1
+      ) {
+        const endpointIndex = event.tag === 'sunrise' ? 0 : pathPoints.length - 1;
+        const endpoint = pathPoints[endpointIndex];
+        const neighbor = pathPoints[event.tag === 'sunrise' ? 1 : endpointIndex - 1];
+        const outwardX = endpoint[0] - neighbor[0];
+        const outwardY = endpoint[1] - neighbor[1];
+        const tangentLength = Math.hypot(outwardX, outwardY);
+
+        if (tangentLength > 0) {
+          labelX = endpoint[0] + (outwardX / tangentLength) * 2;
+          labelY = endpoint[1] + (outwardY / tangentLength) * 2 + 0.35;
+          if (Math.abs(outwardX) > Math.abs(outwardY)) {
+            textAnchor = outwardX < 0 ? 'end' : 'start';
+          }
+        }
+      }
+
+      const color = event.z ? 'var(--bl)' : 'var(--ac)';
+      const label = event.z ? tr(`event.${event.tag}`) : `${Math.round(event.t)}h`;
+      svgParts.push(
+        `<text x="${labelX}" y="${labelY}" text-anchor="${textAnchor}" fill="${color}">${label}</text>`
       );
     });
 
@@ -511,6 +539,7 @@ export function createApp({ state, modules }) {
         latitude: solarState.latitude,
         declination: solarState.declination,
         daylightAngle: solarState.daylightAngle,
+        pathSamples: sunPathSamples,
         date: $('date').value
       },
       options: {

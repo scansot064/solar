@@ -1048,6 +1048,8 @@ export function layoutTemplate({ state, options, helpers }) {
   const items = [];
   const black = [0, 0, 0];
   const gray = [140, 140, 140];
+  const lightGray = [165, 165, 165];
+  const rayGray = [190, 190, 190];
   const addText = (x, y, text, fontSize, color, align = 'start', bold = 0) => {
     items.push({ k: 't', x, y, s: text, pt: fontSize, c: color, an: align, b: bold });
   };
@@ -1090,6 +1092,17 @@ export function layoutTemplate({ state, options, helpers }) {
     ]);
   }
   items.push({ k: 'p', pts: arc, c: black, w: 0.4 });
+
+  const sunPath = state.pathSamples.map(({ elevation, azimuth }) => {
+    const distance = isDome ? Math.cos(elevation * RAD) * diagramRadius : diagramRadius;
+    return [
+      offsetX + distance * Math.sin(azimuth * RAD),
+      offsetY - distance * Math.cos(azimuth * RAD)
+    ];
+  });
+  if (sunPath.length > 1) {
+    items.push({ k: 'p', pts: sunPath, c: lightGray, w: 0.25 });
+  }
 
   const contentBottom = height - margin - (cropCircle ? 14 : 0);
   const visibleCardinals = createVisibleCardinals({
@@ -1134,7 +1147,16 @@ export function layoutTemplate({ state, options, helpers }) {
     ];
 
     items.push(
-      { k: 'l', x1: offsetX, y1: offsetY, x2: x, y2: y, c: black, w: 0.12 },
+      {
+        k: 'l',
+        x1: offsetX,
+        y1: offsetY,
+        x2: x,
+        y2: y,
+        c: rayGray,
+        w: 0.12,
+        dash: [1, 1]
+      },
       { k: 'c', x, y, r: 1.1, c: black, fill: 1 }
     );
     labelItems.push({
