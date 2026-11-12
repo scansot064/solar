@@ -194,15 +194,16 @@ export function renderEarthSol({ latitude, declination, helpers }) {
     >${helpers.translate('svg.night')}</text>
   `;
 
+  const sunX = 235;
   const sunIcon = [
-    `<circle cx="242" cy="${centerY + 5}" r="8" fill="var(--day)"/>`,
+    `<circle cx="${sunX}" cy="${centerY + 5}" r="8" fill="var(--day)"/>`,
     `
       <g stroke="var(--day)" stroke-width="1.5">
-        <path d="M242 ${centerY - 8}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/>
+        <path d="M${sunX} ${centerY - 8}v-5m0 36v-5m-13-13h-5m36 0h-5m-22-9-4-4m26 26-4-4m0-18 4-4m-26 26 4-4"/>
       </g>
     `,
     `
-      <text x="242" y="${centerY + 24}" text-anchor="middle" fill="var(--mu)">
+      <text x="${sunX}" y="${centerY + 40}" text-anchor="middle" fill="var(--mu)">
         ${helpers.translate('svg.fixedSun')}
       </text>
     `
@@ -234,6 +235,13 @@ export function renderEarthTierra({ latitude, declination, helpers }) {
     centerY + radius * cosDeclination
   ];
   let markup = `
+    <circle
+      cx="${centerX}"
+      cy="${centerY}"
+      r="${radius}"
+      fill="var(--night)"
+      stroke="var(--mu)"
+    />
     <path
       d="M${dayStart[0]} ${dayStart[1]}A${radius} ${radius} 0 0 1 ${dayEnd[0]} ${dayEnd[1]}Z"
       fill="var(--day)"
