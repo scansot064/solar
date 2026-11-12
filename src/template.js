@@ -871,8 +871,8 @@ function createTableItems({ placement, state, helpers, isDome, scale, cellWidth 
         const rowY = headerY + (index + 1) * placement.rowHeight;
         const time = helpers.formatTime(event.t);
         const eventLabel = event.z ? ` ${helpers.translate(`event.${event.tag}`)}` : '';
-        const elevation = `${helpers.formatNumber(event.e, 0)}º`;
-        const azimuth = `${helpers.formatNumber(event.A, 0)}º`;
+        const elevation = `${helpers.formatNumber(event.displayElevation, 0)}º`;
+        const azimuth = `${helpers.formatNumber(event.displayAzimuth, 0)}º`;
         const height = `${helpers.formatNumber(event.h * scale)} cm${event.cap ? '*' : ''}`;
 
         addTableText(columnX + columnPositions[0], rowY, time + eventLabel, lightGray);

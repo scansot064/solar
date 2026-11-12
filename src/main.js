@@ -111,12 +111,8 @@ export function createApp({ state, modules }) {
     events = computedEvents;
     state.events = events;
     events.forEach(event => {
-      event.e0 = event.e;
-      event.A0 = event.A;
-      event.e = Math.round(event.e);
-      event.A = Math.round(event.A) % 360;
-    });
-    events.forEach(event => {
+      event.displayElevation = Math.round(event.e);
+      event.displayAzimuth = Math.round(event.A) % 360;
       const elevationRadians = event.e * radiansPerDegree;
       if (model === 'cupula') {
         event.r = radius * Math.cos(elevationRadians);
@@ -253,8 +249,8 @@ export function createApp({ state, modules }) {
       return `
         <tr data-i="${index}" tabindex="0" class="${selectedClass}">
           <td>${timeLabel}</td>
-          <td>${formatNumber(event.e, 0)}º</td>
-          <td>${formatNumber(event.A, 0)}º</td>
+          <td>${formatNumber(event.displayElevation, 0)}º</td>
+          <td>${formatNumber(event.displayAzimuth, 0)}º</td>
           ${distanceCell}
           <td>${formatNumber(event.h)}${cappedMarker}</td>
         </tr>
@@ -302,7 +298,7 @@ export function createApp({ state, modules }) {
       sd: sinDeclination,
       cd: cosDeclination
     } = solarState;
-    const cosineAzimuth = Math.cos(event.A0 * radiansPerDegree);
+    const cosineAzimuth = Math.cos(event.A * radiansPerDegree);
     const azimuthDenominator = Math.cos(event.e * radiansPerDegree) * cosLatitude;
     const azimuthAngle = Math.acos(clamp(cosineAzimuth, -1, 1)) / radiansPerDegree;
     const afternoonText =
@@ -316,8 +312,8 @@ export function createApp({ state, modules }) {
       cosDec: formatNumber(cosDeclination, 3),
       cosHour: formatNumber(Math.cos(event.H * radiansPerDegree), 3),
       sine: formatNumber(event.se, 3),
-      exact: formatNumber(event.e0),
-      rounded: formatNumber(event.e, 0)
+      exact: formatNumber(event.e),
+      rounded: formatNumber(event.displayElevation, 0)
     });
     const azimuthExplanation =
       azimuthDenominator > 1e-6
@@ -325,8 +321,8 @@ export function createApp({ state, modules }) {
             cosine: formatNumber(cosineAzimuth, 3),
             angle: formatNumber(azimuthAngle),
             afternoon: afternoonText,
-            actual: formatNumber(event.A0),
-            rounded: formatNumber(event.A, 0)
+            actual: formatNumber(event.A),
+            rounded: formatNumber(event.displayAzimuth, 0)
           })
         : tr('steps.azimuthUndefined');
     const explanationParts = [
@@ -341,21 +337,23 @@ export function createApp({ state, modules }) {
       explanationParts.push(
         `<p>${tr('steps.dome', {
           radius,
-          elevation: formatNumber(event.e, 0),
-          sin: formatNumber(Math.sin(event.e * radiansPerDegree), 3),
+          exactElevation: formatNumber(event.e, 4),
+          elevation: formatNumber(event.displayElevation, 0),
+          sin: formatNumber(Math.sin(event.e * radiansPerDegree), 6),
           height: formatNumber(event.h),
-          cos: formatNumber(Math.cos(event.e * radiansPerDegree), 3),
+          cos: formatNumber(Math.cos(event.e * radiansPerDegree), 6),
           distance: formatNumber(event.r),
-          azimuth: formatNumber(event.A, 0)
+          azimuth: formatNumber(event.displayAzimuth, 0)
         })}</p>`
       );
     } else {
       explanationParts.push(
         `<p>${tr('steps.pole', {
           radius,
-          elevation: formatNumber(event.e, 0),
-          tan: formatNumber(Math.tan(event.e * radiansPerDegree), 3),
-          height: formatNumber(radius * Math.tan(event.e * radiansPerDegree)),
+          exactElevation: formatNumber(event.e, 4),
+          elevation: formatNumber(event.displayElevation, 0),
+          tan: formatNumber(Math.tan(event.e * radiansPerDegree), 6),
+          height: formatNumber(event.h),
           capped: event.cap ? tr('steps.capped', { height: solarState.hmax }) : ''
         })}</p>`
       );
@@ -426,7 +424,7 @@ export function createApp({ state, modules }) {
     const event = events[selectedIndex];
     const radius = solarState.R;
     const isDome = solarState.mode === 'cupula';
-    const azimuth = event.A;
+    const azimuth = event.displayAzimuth;
     const maxHeight = Math.max(...events.map(item => item.h));
     const requiredLength = Math.ceil(maxHeight) + 3;
     const direction =
@@ -477,7 +475,7 @@ export function createApp({ state, modules }) {
       <ol>
         <li>${tr('craft.height1', { height: formatNumber(event.h), horizon: horizonNote })}</li>
         <li>${tr('craft.height2')}</li>
-        <li>${tr('craft.height3', { elevation: formatNumber(event.e, 0) })}</li>
+        <li>${tr('craft.height3', { elevation: formatNumber(event.displayElevation, 0) })}</li>
       </ol>
       <h2 class="reflection-title">${tr('craft.questionsTitle')}</h2>
       <ol>${reflectionQuestions}</ol>
