@@ -1,7 +1,9 @@
 const RAD = Math.PI / 180;
 const PAPER_SIZES = {
   A4: [210, 297],
-  A3: [297, 420]
+  A3: [297, 420],
+  Letter: [216, 279],
+  Ledger: [279, 432]
 };
 const TEMPLATE_CACHE_LIMIT = 12;
 const templateCache = new Map();
