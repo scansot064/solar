@@ -184,6 +184,7 @@ button:active { transform: translateY(0); }
 .result-card { min-width: 0; padding: clamp(14px, 2vw, 24px); }
 .chart-card { display: grid; min-height: 320px; place-items: center; }
 .chart-card svg { display: block; width: min(100%, 560px); max-width: 560px; height: auto; overflow: visible; }
+#plan polyline { stroke-width: .35; }
 .table-card { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: .84rem; }
 th, td { padding: 9px 8px; border-bottom: 1px solid var(--ln); text-align: right; white-space: nowrap; }
